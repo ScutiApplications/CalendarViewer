@@ -11,6 +11,38 @@ const temp = t => { const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'calendar-
 const sha = data => crypto.createHash('sha256').update(data).digest('hex');
 const model = { repo: 'test/model', revision: 'a'.repeat(40), subfolder: 'typed-decisions', files: [{ name: 'model.safetensors', size: 7, sha256: sha('weights') }] };
 
+test('private runtime setup uses system certificates for dependency downloads', async t => {
+  const dir = temp(t), archive = 'synthetic runtime archive';
+  const name = 'uv-x86_64-unknown-linux-gnu.tar.gz';
+  const url = `https://github.com/astral-sh/uv/releases/download/0.13.7/${name}`;
+  let synced = false;
+  const engine = createLayaEngine({ dir, model, platform: 'linux', arch: 'x64',
+    fetch: async request => request.includes('api.github.com')
+      ? new Response(JSON.stringify({ assets: [{ name, browser_download_url: url, digest: 'sha256:' + sha(archive) }] }))
+      : new Response(request === url ? archive : 'weights'),
+    run: async (binary, args, options) => {
+      if (binary === 'tar') await fs.promises.writeFile(path.join(dir, 'bootstrap', 'uv'), 'installer');
+      else if (args[0] === 'sync') {
+        assert.ok(args.includes('--system-certs'), 'uv must use system trust roots');
+        assert.ok(!args.includes('--allow-insecure-host'));
+        assert.equal(options.windowsHide, true);
+        const python = path.join(dir, 'runtime', 'bin', 'python');
+        await fs.promises.mkdir(path.dirname(python), { recursive: true });
+        await fs.promises.writeFile(python, 'python');
+        synced = true;
+      }
+      return { stdout: '{"ready":true}' };
+    }
+  });
+  t.after(() => engine.stop());
+  await engine.startPull();
+  for (let i = 0; i < 200 && (await engine.state()).pulling; i++) await new Promise(resolve => setTimeout(resolve, 5));
+  const state = await engine.state();
+  assert.equal(state.error, '');
+  assert.equal(synced, true);
+  assert.equal(state.installed, true);
+});
+
 test('Laya never downloads on state or inference; explicit setup verifies all checkpoint files', async t => {
   const dir = temp(t); let calls = 0, installs = 0;
   const engine = createLayaEngine({ dir, model, platform: 'win32', arch: 'x64', fetch: async () => { calls++; return new Response('weights'); },

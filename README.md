@@ -144,6 +144,8 @@ Off by default. Open **Calendar assistant settings**, select **Built-in Laya + M
 
 MiniCPM uses the pinned llama.cpp release `b12244` under `data/llama/`, with automatic Vulkan/Metal GPU detection and CPU fallback. Laya uses a pinned checkpoint revision and a private CPU Python runtime under `data/laya/`; no manual Python installation or separate Laya service is needed. The bootstrap uses pinned uv `0.13.7`, Python `3.12.16` and `src/laya/uv.lock`. Checkpoint files are SHA-256 verified, and setup checks that Laya loads offline before marking it ready. First setup downloads roughly 2.4 GB of model weights plus platform runtimes/dependencies; progress names the model being installed.
 
+Laya's Python installer uses the operating system's certificate store for HTTPS downloads, including trusted corporate proxy certificates. If setup previously failed with `UnknownIssuer`, restart CalendarViewer after updating and press **Complete setup: Laya and MiniCPM** to retry. Certificate verification remains enabled.
+
 Only the selected built-in provider runs these local models. Anthropic, OpenAI and Gemini use the chosen hosted provider directly, including on errors; legacy hosted-to-local fallback settings are ignored. Changing to a hosted provider stops the local models and hides the built-in download panel. The downloaded files remain available when switching back.
 
 The settings modal writes `data/assistant-config.json`. Optional environment variables override it and show the field as locked:

@@ -60,7 +60,8 @@ function createLayaEngine({ dir, model = checkpoint, platform = process.platform
     if (platform !== 'win32') await fs.chmod(uv, 0o755);
     job.status = 'Installing private Python and CPU Laya dependencies';
     signal.throwIfAborted();
-    await run(uv, ['sync', '--project', project, '--frozen', '--no-dev', '--no-build', '--python', '3.12.16', '--managed-python', '--no-progress'],
+    // Honor OS-managed trust roots, including corporate HTTPS inspection certificates.
+    await run(uv, ['sync', '--system-certs', '--project', project, '--frozen', '--no-dev', '--no-build', '--python', '3.12.16', '--managed-python', '--no-progress'],
       { env: environment(), signal, windowsHide: true, timeout: 20 * 60 * 1000, maxBuffer: 1024 * 1024 });
   }
   async function startPull() {
