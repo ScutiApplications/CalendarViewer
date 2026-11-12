@@ -4,8 +4,15 @@ const fs = require('fs'), os = require('os'), path = require('path'), http = req
 const { spawn } = require('child_process');
 const { createStartupService } = require('../src/server/startup.js');
 
-test('startup service reports and toggles the shortcut', async () => {
+test('startup service reports and toggles the shortcut', async t => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'startup-'));
+  const previousAppData = process.env.APPDATA;
+  process.env.APPDATA = dir;
+  t.after(() => {
+    if (previousAppData === undefined) delete process.env.APPDATA;
+    else process.env.APPDATA = previousAppData;
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
   const lnk = path.join(dir, 'x.lnk');
   const calls = [];
   const install = async args => { calls.push(args); if (args[0] === 'startup-off') fs.rmSync(lnk, { force: true }); else fs.writeFileSync(lnk, ''); };

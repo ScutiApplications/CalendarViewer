@@ -73,10 +73,12 @@ const settle = async installer => {
   throw new Error('Installer did not settle.');
 };
 
-test('explicit install stages a verified package, keeps old server alive until ready, and prevents duplicate installs', async t => {
+test('explicit install stages a verified package, keeps old server alive until ready, and prevents duplicate installs', { timeout: 10000 }, async t => {
   const job = await fixture(t), dataDir = path.join(job.root, 'data');
   const bytes = Buffer.from('synthetic archive'), digest = crypto.createHash('sha256').update(bytes).digest('hex');
   let downloaded = 0, launched = 0, restarted = 0;
+  let confirmRestart;
+  const restartCalled = new Promise(resolve => { confirmRestart = resolve; });
   const release = { status: 'available', latestVersion: '1.1.0', download: { url: 'https://github.com/test.zip', sha256: digest, size: bytes.length } };
   const installer = createUpdateInstaller({ root: job.root, dataDir, version: '1.0.0', platform: 'win32', port: 29945,
     checker: { async check(options) { assert.equal(options.force, true); return release; } },
@@ -89,13 +91,14 @@ test('explicit install stages a verified package, keeps old server alive until r
       for (const file of ['run.bat', 'src/server/server.js', 'scripts/calendar.ps1']) await fs.writeFile(path.join(stage, file), 'fixture');
     },
     launch: async staged => { launched++; assert.equal(restarted, 0); assert.equal(await fs.readFile(path.join(job.root, 'VERSION'), 'utf8'), '1.0.0'); assert.ok(staged.files.includes('update-manifest.json')); },
-    restart() { restarted++; }
+    restart() { restarted++; confirmRestart(); }
   });
   await installer.state(); assert.equal(downloaded, 0);
   const starting = installer.start('1.1.0');
   await assert.rejects(installer.start('1.1.0'), /already in progress/);
   assert.equal((await starting).phase, 'downloading');
   assert.equal((await settle(installer)).phase, 'restarting');
+  await restartCalled;
   assert.equal(downloaded, 1); assert.equal(launched, 1); assert.equal(restarted, 1);
   assert.equal(await fs.readFile(path.join(dataDir, 'feeds.json'), 'utf8'), 'private calendars');
 });
