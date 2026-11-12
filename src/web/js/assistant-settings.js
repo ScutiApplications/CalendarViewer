@@ -77,12 +77,16 @@ function initAssistantSettings() {
       if (!response.ok) throw new Error(assistantStaleServer(response) || 'unavailable');
       const info = await response.json();
       const complete = info.installed && info.accelerationReady !== false;
+      localPull.ariaBusy = String(!!info.pulling);
       localPull.disabled = !!info.pulling || complete || !info.supported;
       localPull.hidden = complete;
       if (info.installed && !complete) localPull.textContent = 'Enable automatic GPU support';
       else if (info.minicpmInstalled && !info.installed) localPull.textContent = 'Complete setup: Laya and MiniCPM';
+      if (info.pulling) localPull.textContent = 'Setting up built-in models…';
       const mode = info.backend && info.backend !== 'cpu' ? 'GPU: ' + (info.device || info.backend) : 'CPU';
-      localState.textContent = info.pulling ? `Downloading… ${info.pulling.percent}% (${info.pulling.status})` :
+      const progress = Number.isFinite(info.pulling?.percent) ? `${info.pulling.percent}% — ` : '';
+      const elapsed = info.pulling?.elapsedSeconds ? ` (${Math.floor(info.pulling.elapsedSeconds / 60)}m ${info.pulling.elapsedSeconds % 60}s elapsed)` : '';
+      localState.textContent = info.pulling ? `Setting up… ${progress}${info.pulling.status}${elapsed}` :
         info.error ? 'Download failed: ' + info.error :
         !info.supported ? 'This system has no ready-made engine in the app. Choose another provider.' :
         info.installed ? 'Built-in model ready. ' + mode + '.' : 'Built-in model not downloaded yet.';

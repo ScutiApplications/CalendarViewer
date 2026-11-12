@@ -48,8 +48,10 @@
 #assistant-token-clear { padding: 6px 0; min-height: 32px; border: 0; background: transparent; color: var(--danger); font-size: 12px; }
 #assistant-hosted-note, #assistant-settings-state { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
 #assistant-local-row { padding: 14px; border-radius: 10px; background: var(--surface-muted); }
-#assistant-local-state { margin: 0 0 10px; font-size: 12px; }
+#assistant-local-state { margin: 0 0 10px; font-size: 12px; overflow-wrap: anywhere; white-space: pre-line; }
 #assistant-local-pull { min-height: 44px; max-width: 100%; white-space: normal; }
+#assistant-local-pull[aria-busy=true]::before { content: ''; display: inline-block; width: 12px; height: 12px; margin-right: 8px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; vertical-align: middle; animation: state-spin .8s linear infinite; }
+@media (prefers-reduced-motion: reduce) { #assistant-local-pull[aria-busy=true]::before { animation: none; } }
 .assistant-settings-footer { border-top: 1px solid var(--border); padding-top: 16px; }
 #assistant-settings-state:empty { display: none; }
 #assistant-settings-state:empty + .assistant-actions { margin-top: 0; }

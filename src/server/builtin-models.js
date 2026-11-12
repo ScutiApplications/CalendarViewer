@@ -8,7 +8,7 @@ function createBuiltinModels({ minicpm, laya, selected = () => true }) {
     const [mini, routing] = await Promise.all([minicpm.state(), laya.state()]);
     return { ...mini, supported: mini.supported && routing.supported, installed: mini.installed && routing.installed,
       minicpmInstalled: mini.installed, laya: routing,
-      pulling: job && !job.done ? { percent: job.percent, status: job.status } : null,
+      pulling: job && !job.done ? { percent: job.percent, status: job.status, elapsedSeconds: job.elapsedSeconds || 0 } : null,
       error: job?.error || routing.error || mini.error || '' };
   }
   async function install(component, label, base, share) {
@@ -18,17 +18,19 @@ function createBuiltinModels({ minicpm, laya, selected = () => true }) {
       requireBuiltin();
       const value = await component.state();
       if (!value.pulling) { if (!value.installed) throw new Error(value.error || `${label} installation incomplete.`); break; }
-      job.status = `${label}: ${value.pulling.status}`; job.percent = base + Math.floor(value.pulling.percent * share);
+      job.status = `${label}: ${value.pulling.status}`;
+      job.percent = Number.isFinite(value.pulling.percent) ? base + Math.floor(value.pulling.percent * share) : null;
+      job.elapsedSeconds = value.pulling.elapsedSeconds || 0;
       await delay(100);
     }
   }
   async function startPull() {
     requireBuiltin();
     if (!job || job.done) {
-      job = { done: false, percent: 0, status: 'Preparing Laya and MiniCPM', error: '' };
+      job = { done: false, percent: null, status: 'Preparing Laya and MiniCPM', error: '' };
       (async () => {
         try { await install(laya, 'Laya', 0, 0.5); await install(minicpm, 'MiniCPM', 50, 0.5); job.percent = 100; }
-        catch (error) { job.error = String(error.message).slice(0, 300); }
+        catch (error) { job.error = String(error.message).slice(-2000); }
         finally { job.done = true; }
       })();
     }

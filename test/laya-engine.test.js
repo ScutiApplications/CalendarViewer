@@ -11,6 +11,32 @@ const temp = t => { const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'calendar-
 const sha = data => crypto.createHash('sha256').update(data).digest('hex');
 const model = { repo: 'test/model', revision: 'a'.repeat(40), subfolder: 'typed-decisions', files: [{ name: 'model.safetensors', size: 7, sha256: sha('weights') }] };
 
+test('runtime setup reports unknown progress and preserves the actual failure after long command paths', async t => {
+  const dir = temp(t);
+  let release;
+  const waiting = new Promise(resolve => { release = resolve; });
+  const engine = createLayaEngine({ dir, model, platform: 'win32', arch: 'x64',
+    installRuntime: async () => {
+      await waiting;
+      throw Object.assign(new Error('Command failed: ' + 'long-path/'.repeat(100)), {
+        code: 1, stderr: 'warning\n'.repeat(400) + 'RuntimeError: synthetic verification failure'
+      });
+    }
+  });
+  t.after(() => engine.stop());
+  await engine.startPull();
+  const pending = await engine.state();
+  assert.equal(pending.pulling.percent, null);
+  assert.equal(typeof pending.pulling.elapsedSeconds, 'number');
+  release();
+  for (let i = 0; i < 200 && (await engine.state()).pulling; i++) await new Promise(resolve => setTimeout(resolve, 5));
+  const failed = await engine.state();
+  assert.match(failed.error, /exit 1/);
+  assert.match(failed.error, /RuntimeError: synthetic verification failure$/);
+  assert.doesNotMatch(failed.error, /long-path/);
+  assert.match(await fs.promises.readFile(path.join(dir, 'setup-error.log'), 'utf8'), /RuntimeError: synthetic verification failure/);
+});
+
 test('private runtime setup uses system certificates for dependency downloads', async t => {
   const dir = temp(t), archive = 'synthetic runtime archive';
   const name = 'uv-x86_64-unknown-linux-gnu.tar.gz';
@@ -66,6 +92,30 @@ test('bad Laya hashes never mark setup complete, and a retry repairs the checkpo
   assert.match((await install()).error, /checksum/);
   assert.equal((await engine.state()).installed, false);
   bytes = 'weights'; assert.equal((await install()).installed, true);
+});
+
+test('verification retry reuses checksummed downloads and allows slow first loads', async t => {
+  const dir = temp(t); let downloads = 0, checks = 0;
+  const engine = createLayaEngine({ dir, model, platform: 'win32', arch: 'x64',
+    fetch: async () => { downloads++; return new Response('weights'); },
+    installRuntime: async python => { await fs.promises.mkdir(path.dirname(python), { recursive: true }); await fs.promises.writeFile(python, 'python'); },
+    run: async (_binary, _args, options) => {
+      assert.equal(options.timeout, 10 * 60 * 1000);
+      assert.equal(options.env.HF_HUB_OFFLINE, '1');
+      if (++checks === 1) throw Object.assign(new Error('verification timed out'), { killed: true, signal: 'SIGTERM' });
+      return { stdout: '{"ready":true}', stderr: 'A nonfatal warning' };
+    }
+  });
+  t.after(() => engine.stop());
+  async function install() {
+    await engine.startPull();
+    for (let i = 0; i < 200 && (await engine.state()).pulling; i++) await new Promise(resolve => setTimeout(resolve, 5));
+    return engine.state();
+  }
+  assert.match((await install()).error, /timed out/);
+  assert.equal((await install()).installed, true);
+  assert.equal(downloads, 1);
+  assert.equal(checks, 2);
 });
 
 async function readyWorker(t, spawn) {
