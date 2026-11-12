@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ICS Calendar Viewer</title>
+<script src="/js/theme-init.js"></script>
+<script src="/vendor/ical.min.js"></script>
+<script src="/vendor/fullcalendar.min.js"></script>
+<script src="/shared/alert-logic.js"></script>
+<script src="/shared/search.js"></script>
+<script src="/shared/backup.js"></script>
+<script src="/shared/storage.js"></script>
+<script src="/shared/calendar-layout.js"></script>
+<script src="/js/backup-ui.js"></script>
+<link rel="stylesheet" href="/css/styles.css">
+<link rel="stylesheet" href="/css/responsive.css">
+<link rel="stylesheet" href="/css/assistant.css">
+</head>
+<body>
+<div class="app">
+<header class="compact-header">
+  <div class="compact-brand"><span aria-hidden="true">▦</span>Calendar Viewer</div>
+  <button class="menu-toggle" type="button" data-open-panel="calendars" aria-controls="sidebar" aria-expanded="false" aria-label="Calendars and settings"><span class="menu-icon" aria-hidden="true"><span></span><span></span><span></span></span></button>
+</header>
+<button class="sidebar-backdrop" type="button" aria-label="Close calendars and settings" hidden></button>
+<aside id="sidebar" aria-label="Calendars">
+<div class="sb-head">
+  <button id="add-toggle" class="sb-icon" type="button" aria-expanded="false" aria-controls="add-card">Add Calendar</button>
+  <button id="sidebar-close" type="button" aria-label="Close calendars and settings">×</button>
+</div>
+<div id="add-card" class="add-card" hidden>
+  <div class="sb-seg" role="group" aria-label="How to add a calendar">
+    <button id="mode-link" type="button" aria-pressed="true">Link</button>
+    <button id="mode-file" type="button" aria-pressed="false">File</button>
+  </div>
+  <form id="add" aria-label="Add calendar link">
+    <input name="name" aria-label="Calendar label" placeholder="Label (Work)">
+    <input name="url" aria-label="ICS link" placeholder="ICS link" required>
+    <button type="submit">Add calendar</button>
+  </form>
+  <label id="drop" hidden>Drop .ics files here or click to choose
+    <input id="file" type="file" accept=".ics,text/calendar" multiple hidden>
+  </label>
+</div>
+<div id="sources" role="list"></div>
+<div class="alerts-panel" aria-label="Settings">
+  <div class="sb-hours" role="group" aria-label="Working hours">
+    <span>Working hours</span>
+    <span class="sb-hours-range"><input type="time" id="hours-start" aria-label="Working hours start"><span aria-hidden="true">–</span><input type="time" id="hours-end" aria-label="Working hours end"></span>
+  </div>
+  <div class="sb-hours" role="group" aria-label="Theme">
+    <span>Theme</span>
+    <div class="sb-seg">
+      <button type="button" data-theme-choice="system" aria-pressed="true">System</button>
+      <button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
+      <button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
+    </div>
+  </div>
+  <label class="sb-switch"><span>Hide cancelled events</span><input type="checkbox" id="hide-cancelled" role="switch"></label>
+  <label class="sb-switch"><span>Mute all alerts</span><input type="checkbox" id="mute-all" role="switch"></label>
+  <label id="startup-row" class="sb-switch" hidden title="The server starts in the background at sign-in so alerts work with the browser closed."><span>Start with Windows</span><input type="checkbox" id="startup-toggle" role="switch"></label>
+  <div id="startup-state" class="startup-state" role="status" aria-live="polite" hidden><span class="state-icon" aria-hidden="true"></span><span id="startup-state-text"></span></div>
+  <div class="sb-status"><span class="sb-dot" aria-hidden="true"></span><span id="notify-status" role="status"></span></div>
+  <button id="notify-enable" type="button" hidden>Enable system notifications</button>
+  <details class="backup-settings"><summary>Backup &amp; restore</summary>
+    <div class="backup-actions"><button id="backup-export" type="button">Export backup</button><button id="backup-import" type="button">Restore backup</button><button id="backup-undo" type="button">Recovery backup</button></div>
+    <p>Local backups contain private calendar links. Keep them secure.</p>
+    <input id="backup-file" type="file" accept=".json,application/json" hidden>
+  </details>
+  <button id="assistant-settings-open" type="button" aria-haspopup="dialog" aria-controls="assistant-settings-dialog">Calendar assistant settings</button>
+</div>
+<div id="drop-overlay" class="drop-overlay" hidden>Drop .ics files to add</div>
+</aside>
+<main>
+<section class="compact-calendar" aria-label="Date navigation">
+  <div class="compact-date-row"><p id="compact-weekday"></p><div id="compact-title" class="compact-date-field">
+    <button type="button" data-date-picker-open aria-haspopup="dialog" aria-controls="date-picker" aria-expanded="false"><span class="date-input-value"></span><span aria-hidden="true">↕</span></button>
+  </div></div>
+  <div class="compact-controls"><div class="compact-arrows"><button id="compact-prev" type="button" aria-label="Previous week">‹</button><button id="compact-today" type="button">Today</button><button id="compact-next" type="button" aria-label="Next week">›</button></div><div id="compact-views" role="group" aria-label="Calendar view"></div></div>
+  <div class="date-wheel">
+    <div class="date-wheel-label" aria-hidden="true">SELECTED DATE</div>
+    <div class="date-wheel-pointer" aria-hidden="true"></div>
+    <div class="date-wheel-viewport">
+      <div id="compact-week" role="group" aria-label="Choose a date. Drag or scroll; the center date is selected on release." aria-describedby="date-wheel-preview"></div>
+      <span class="date-wheel-marker" aria-hidden="true"></span>
+      <button class="date-wheel-arrow wheel-previous" type="button" data-wheel-step="-1" aria-label="Previous day">‹</button>
+      <button class="date-wheel-arrow wheel-next" type="button" data-wheel-step="1" aria-label="Next day">›</button>
+    </div>
+    <div class="date-wheel-grip" aria-hidden="true"></div>
+    <p id="date-wheel-preview"></p>
+  </div>
+</section>
+<section id="search-tools" aria-label="Search events">
+  <label for="event-search">Search events</label><input id="event-search" type="search" placeholder="Title or location" aria-describedby="search-status">
+  <button id="clear-search" type="button" disabled>Clear</button><p id="search-status" role="status" aria-live="polite" aria-atomic="true"></p>
+</section>
+<div id="sync-strip" class="sync-strip" data-state="idle">
+  <span class="sync-dot" aria-hidden="true"></span>
+  <span id="note" role="status" aria-live="polite"><span id="status"></span></span>
+  <span class="sync-sep" aria-hidden="true">·</span>
+  <label class="sync-auto">Auto-refresh
+    <select id="auto-refresh">
+      <option value="0">off</option><option value="1">every minute</option>
+      <option value="5">every 5 min</option><option value="10">every 10 min</option>
+      <option value="15">every 15 min</option><option value="30">every 30 min</option>
+      <option value="60">every hour</option>
+    </select>
+  </label>
+  <button id="refresh" class="sync-refresh" type="button"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14.9-3M4 5v4h4M4 13a8 8 0 0 0 14.9 3M20 19v-4h-4"/></svg>Refresh now</button>
+</div>
+<section id="compact-up-next" aria-label="Up next" hidden></section>
+<div id="cal"></div><div id="calendar-loading" aria-hidden="true" hidden></div>
+<section id="up-next" class="up-next" aria-label="Up next" hidden></section></main>
+</div>
+<dialog id="date-picker" aria-labelledby="date-picker-title">
+  <div class="date-picker-body">
+    <div class="date-picker-heading"><h2 id="date-picker-title">Jump to a date</h2><button type="button" class="date-picker-close" aria-label="Close date picker">×</button></div>
+    <div class="date-picker-labels" aria-hidden="true"><span>Month</span><span>Day</span><span>Year</span></div>
+    <div class="date-picker-wheels"><div class="date-picker-band" aria-hidden="true"></div><div class="date-picker-wheel" data-date-wheel="month" role="group" aria-label="Month"></div><div class="date-picker-wheel" data-date-wheel="day" role="group" aria-label="Day"></div><div class="date-picker-wheel" data-date-wheel="year" role="group" aria-label="Year"></div></div>
+    <div class="date-picker-footer"><span class="date-picker-summary" role="status" aria-live="polite"></span><button type="button" class="primary date-picker-apply">Apply date</button></div>
+  </div>
+</dialog>
+<dialog id="dlg" aria-labelledby="dt"><div id="dlg-bar" class="dlg-bar"></div><div class="dialog-body">
+  <form method="dialog"><button class="icon-button dialog-close" aria-label="Close event details" title="Close"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></form>
+  <div id="event-status" class="event-status"></div>
+  <p id="event-conflicts" class="event-conflicts" hidden></p>
+  <h2 id="dt"></h2><div id="dm"></div>
+  <div class="detail-row"><svg class="detail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 2v6m10-6v6M3 11h18"/></svg><div><div id="event-date" class="detail-strong"></div><div id="event-time" class="detail-sub"></div></div></div>
+  <div id="location-row" class="detail-row"><svg class="detail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg><div id="event-location"></div></div>
+  <div class="detail-actions">
+    <a id="join" class="primary" target="_blank" rel="noopener noreferrer" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="2" y="5" width="13" height="14" rx="3"/><path d="m17 9 5-3v12l-5-3Z"/></svg>Join meeting</a>
+    <button id="copy-link" class="detail-copy" type="button" hidden><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg><span>Copy link</span></button>
+  </div>
+  <section class="alert-section">
+    <div class="alert-head"><h3>Alerts</h3><span id="alert-summary" class="alert-summary"></span></div>
+    <div class="alert-seg" role="radiogroup" aria-label="Alert mode">
+      <label><input type="radio" name="alert-mode" value="default"><span>Calendar default</span></label>
+      <label><input type="radio" name="alert-mode" value="custom"><span>Custom</span></label>
+      <label><input type="radio" name="alert-mode" value="muted"><span>Muted</span></label>
+    </div>
+    <div id="alert-custom"></div>
+    <div class="alert-hint" id="alert-note"></div>
+  </section>
+  <section class="description-section"><h3>Description</h3><pre id="dd"></pre><button id="dd-toggle" class="dd-toggle" type="button" hidden>Show more</button><details id="meeting-footer" class="meeting-footer" hidden><summary>Meeting information &amp; original details</summary><pre id="meeting-footer-text"></pre></details></section>
+</div></dialog>
+<dialog id="cal-alert-dlg" aria-labelledby="cal-alert-title"><div class="dialog-body">
+  <form method="dialog"><button class="icon-button dialog-close" aria-label="Close alert settings" title="Close">×</button></form>
+  <h2 id="cal-alert-title"></h2>
+  <label class="alert-modes"><span><input type="checkbox" id="cal-alert-enabled"> Alerts on for this calendar</span></label>
+  <div id="cal-alert-editor"></div>
+  <p class="alert-hint">Applies to every event in this calendar unless an event has its own setting.</p>
+</div></dialog>
+<div id="toasts" aria-live="assertive"></div>
+<dialog id="backup-preview" aria-labelledby="backup-title"><div class="dialog-body">
+  <h2 id="backup-title">Backup &amp; restore</h2><p id="backup-summary"></p><p id="backup-error" role="alert"></p>
+  <div class="backup-actions"><button id="backup-restore" type="button" class="primary" disabled>Replace with backup</button><button id="backup-cancel" type="button">Cancel</button></div>
+</div></dialog>
+
+<dialog id="assistant-settings-dialog" class="assistant-settings" aria-labelledby="assistant-settings-title" aria-describedby="assistant-settings-description"><div class="dialog-body">
+  <div class="assistant-heading"><svg class="assistant-heading-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5Z"/><path d="M8 10h8M8 14h5"/></svg><div><h2 id="assistant-settings-title">Calendar assistant settings</h2><p id="assistant-settings-description">Choose how your calendar assistant connects.</p></div><button id="assistant-settings-close" class="icon-button" type="button" aria-label="Close assistant settings"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
+    <form id="assistant-settings-form">
+      <label class="sb-switch"><span>Enable assistant<small>Show Ask Calendar in your calendar view.</small></span><input type="checkbox" id="assistant-enabled" role="switch"></label>
+      <div class="assistant-provider-field"><label for="assistant-provider">AI provider</label>
+      <select id="assistant-provider">
+        <option value="llamacpp">Built-in MiniCPM5-2B (self-contained)</option>
+        <option value="anthropic">Anthropic (Claude Haiku 5.5)</option>
+        <option value="openai">OpenAI (Luna 6)</option>
+        <option value="gemini">Google Gemini (3.8 Flash)</option>
+      </select></div>
+      <div id="assistant-token-row">
+        <label for="assistant-token" id="assistant-token-label">API key</label>
+        <input type="password" id="assistant-token" autocomplete="off" spellcheck="false" aria-describedby="assistant-token-state"><div class="assistant-token-meta"><small id="assistant-token-state"></small><button id="assistant-token-clear" type="button" hidden>Remove saved key</button></div>
+      </div>
+      <div id="assistant-model-row" hidden>
+        <label for="assistant-model">Model name</label>
+        <input type="text" id="assistant-model" autocomplete="off" spellcheck="false">
+      </div>
+      <label class="sb-switch" id="assistant-fallback-row"><span>Use built-in MiniCPM5-2B as backup</span><input type="checkbox" id="assistant-fallback" role="switch"></label>
+      <div id="assistant-local-row" hidden>
+        <p id="assistant-local-state" role="status" aria-live="polite"></p>
+        <button id="assistant-local-pull" type="button">Download model (about 1.5 GB)</button>
+      </div>
+
+
+    <p id="assistant-builtin-note" hidden>The self-contained model runs on this PC and sends nothing off it. Pressing <strong>Download</strong> fetches the official llama.cpp program from GitHub and the MiniCPM5-2B weights from Hugging Face (about 1.6 GB together), and checks both against their published checksums. It starts on your first question and stops when idle, and it is slower than a hosted provider on a CPU.</p>
+    <p id="assistant-hosted-note" hidden>Questions and calendar details are sent to the chosen provider over the internet, and their terms apply. Saved API keys are never shown again. The model name can be changed if your account uses a different one.</p>
+  <div class="assistant-settings-footer"><p id="assistant-settings-state" role="status" aria-live="polite"></p><div class="assistant-actions"><button id="assistant-test" type="button">Test connection</button><button id="assistant-save" type="submit" class="primary">Save</button></div></div>
+    </form>
+</div></dialog>
+
+<button id="assistant-open" type="button" class="primary" aria-haspopup="dialog" aria-controls="assistant-dialog" aria-label="Ask calendar" hidden><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.5-4.6A8 8 0 1 1 21 12z"/><path d="M8.5 11h7M8.5 14.5h4.5"/></svg><span class="assistant-label" aria-hidden="true">Ask Calendar</span></button>
+<dialog id="assistant-dialog" aria-labelledby="assistant-title" aria-describedby="assistant-privacy"><div class="dialog-body assistant-chat">
+  <div class="assistant-heading"><svg class="assistant-heading-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5Z"/><path d="M8 10h8M8 14h5"/></svg><div><h2 id="assistant-title">Calendar assistant</h2><p id="assistant-state" role="status" aria-live="polite"></p></div><select id="assistant-provider-pick" class="chat-provider" aria-label="AI provider"></select><button id="assistant-new" type="button" class="chat-new">New chat</button><button id="assistant-close" type="button" class="icon-button" aria-label="Close calendar assistant"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
+  <p id="assistant-privacy" class="assistant-notice"></p>
+  <p id="assistant-load" class="assistant-warning" hidden></p>
+  <div id="assistant-thread" role="log" aria-live="polite" aria-relevant="additions text" aria-label="Conversation" tabindex="0"></div>
+  <form id="assistant-form">
+    <div id="assistant-input-row" class="chat-composer">
+      <label for="assistant-question" class="sr-only">Ask about your calendar</label>
+      <textarea id="assistant-question" maxlength="2000" rows="1" required placeholder="Ask about your calendar…" aria-describedby="assistant-keyboard-help"></textarea>
+      <button id="assistant-send" type="submit" class="primary chat-send" disabled aria-label="Send question"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+      <button id="assistant-stop" type="button" class="chat-send" hidden aria-label="Stop answer"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/></svg></button>
+    </div>
+    <p id="assistant-check" class="chat-check" role="status" aria-live="polite"></p>
+    <div class="chat-foot"><p id="assistant-keyboard-help" class="assistant-keyboard-help">Enter to send · Shift+Enter for a new line</p><button id="assistant-retry" type="button" class="chat-link">Check Connection</button></div>
+  </form>
+</div></dialog>
+
+<script src="/js/core.js"></script>
+<script src="/js/state.js"></script>
+<script src="/js/sources-store.js"></script>
+<script src="/js/event-format.js"></script>
+<script src="/js/event-cards.js"></script>
+<script src="/js/working-hours.js"></script>
+<script src="/js/search-ui.js"></script>
+<script src="/js/calendar.js"></script>
+<script src="/js/event-dialog.js"></script>
+<script src="/js/up-next.js"></script>
+<script src="/js/date-wheel.js"></script>
+<script src="/js/date-picker.js"></script>
+<script src="/js/responsive-ui.js"></script>
+<script src="/js/alert-sync.js"></script>
+<script src="/js/alert-editors.js"></script>
+<script src="/js/alert-delivery.js"></script>
+<script src="/js/sidebar-settings.js"></script>
+<script src="/js/sources-ui.js"></script>
+<script src="/js/feeds.js"></script>
+<script src="/js/refresh-controls.js"></script>
+<script src="/js/theme.js"></script>
+<script src="/js/add-calendar.js"></script>
+<script src="/js/backup-glue.js"></script>
+<script src="/js/assistant-ui.js"></script>
+<script src="/js/assistant-settings.js"></script>
+<script src="/js/dialog-backdrop.js"></script>
+<script src="/js/main.js"></script>
+</body>
+</html>
