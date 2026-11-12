@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1430" viewBox="0 0 1200 1430" role="img" aria-labelledby="title caption" style="font-family:Arial,Helvetica,sans-serif;min-width:1200px"><title id="title">01 / From question to calendar answer</title><desc id="caption">The server coordinates tool selection, bounded model calls and verifiable calendar results.</desc><defs><marker id="arrow" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 4 L0 8Z" fill="#65717a"/></marker></defs><rect width="1200" height="1430" fill="#f3f4f2"/>
+<text x="40" y="49" font-size="30" fill="#222b31" font-weight="600" text-anchor="start">01 / From question to calendar answer</text>
+<text x="40" y="82" font-size="17" fill="#4d5961" font-weight="400" text-anchor="start">The server coordinates tool selection, bounded model calls and verifiable calendar results.</text>
+<rect x="32" y="114" width="186" height="58" rx="8" fill="#e8ebe7" stroke="#395b78" stroke-width="1.5" />
+<text x="125" y="149" font-size="19" fill="#395b78" font-weight="600" text-anchor="middle">Browser page</text>
+<line x1="125" y1="172" x2="125" y2="1030" stroke="#395b78" stroke-dasharray="4 7" opacity="0.55"/>
+<rect x="262" y="114" width="186" height="58" rx="8" fill="#e8ebe7" stroke="#435e50" stroke-width="1.5" />
+<text x="355" y="149" font-size="19" fill="#435e50" font-weight="600" text-anchor="middle">Calendar server</text>
+<line x1="355" y1="172" x2="355" y2="1030" stroke="#435e50" stroke-dasharray="4 7" opacity="0.55"/>
+<rect x="492" y="114" width="186" height="58" rx="8" fill="#e8ebe7" stroke="#81662d" stroke-width="1.5" />
+<text x="585" y="149" font-size="19" fill="#81662d" font-weight="600" text-anchor="middle">Tool selector</text>
+<line x1="585" y1="172" x2="585" y2="1030" stroke="#81662d" stroke-dasharray="4 7" opacity="0.55"/>
+<rect x="722" y="114" width="186" height="58" rx="8" fill="#e8ebe7" stroke="#705579" stroke-width="1.5" />
+<text x="815" y="149" font-size="19" fill="#705579" font-weight="600" text-anchor="middle">Model</text>
+<line x1="815" y1="172" x2="815" y2="1030" stroke="#705579" stroke-dasharray="4 7" opacity="0.55"/>
+<rect x="982" y="114" width="186" height="58" rx="8" fill="#e8ebe7" stroke="#306b69" stroke-width="1.5" />
+<text x="1075" y="149" font-size="19" fill="#306b69" font-weight="600" text-anchor="middle">Calendar tools</text>
+<line x1="1075" y1="172" x2="1075" y2="1030" stroke="#306b69" stroke-dasharray="4 7" opacity="0.55"/>
+<path d="M125 232 L355 232" fill="none" stroke="#65717a" stroke-width="1.8" marker-end="url(#arrow)" />
+<text x="240" y="220" font-size="16" fill="#222b31" font-weight="400" text-anchor="middle">1 · POST /api/assistant</text>
+<rect x="40" y="251" width="407" height="83" rx="8" fill="#f3f4f2" stroke="#a0a9a3" stroke-width="1.5" />
+<text x="54" y="277" font-size="16" fill="#4d5961" font-weight="400" text-anchor="start">Question ≤ 2000 chars · body ≤ 32 KiB</text>
+<text x="54" y="300" font-size="16" fill="#4d5961" font-weight="400" text-anchor="start">Summary + up to 3 exchanges + working hours</text>
+<text x="54" y="323" font-size="16" fill="#4d5961" font-weight="400" text-anchor="start">One active answer across the server</text>
+<rect x="324" y="359" width="584" height="285" rx="8" fill="none" stroke="#a0a9a3" stroke-width="1.5" />
+<text x="338" y="384" font-size="16" fill="#81662d" font-weight="600" text-anchor="start">2 · TOOL SELECTION · built-in provider only</text>
+<path d="M355 423 L585 423" fill="none" stroke="#65717a" stroke-width="1.8" marker-end="url(#arrow)" />
+<text x="470" y="411" font-size="16" fill="#222b31" font-weight="400" text-anchor="middle">Select tools</text>
+<path d="M585 466 L815 466" fill="none" stroke="#65717a" stroke-width="1.8" marker-end="url(#arrow)" />
+<text x="700" y="454" font-size="16" fill="#222b31" font-weight="400" text-anchor="middle">Short tool-free call</text>
+<path d="M815 509 L585 509" fill="none" stroke="#65717a" stroke-width="1.8" marker-end="url(#arrow)" stroke-dasharray="6 5"/>
+<text x="700" y="497" font-size="16" fill="#222b31" font-weight="400" text-anchor="middle">Tool names</text>
+<path d="M585 552 L355 552" fill="none" stroke="#65717a" stroke-width="1.8" marker-end="url(#arrow)" stroke-dasharray="6 5"/>
+<text x="470" y="540" font-size="16" fill="#222b31" font-weight="400" text-anchor="middle">Chosen definitions</text>
+<rect x="450" y="573" width="435" height="55" rx="8" fill="#f3f4f2" stroke="#a0a9a3" stroke-width="1.5" />
+<text x="464" y="595" font-size="16" fill="#4d5961" font-weight="400" text-anchor="start">Failure / empty selection → send every tool</text>
+<text x="464" y="617" font-size="16" fill="#4d5961" font-weight="400" text-anchor="start">Hosted provider selected → skip selector; all tools</text>
+<rect x="40" y="365" width="257" height="269" rx="8" fill="#e8ebe7" stroke="#81662d" stroke-width="1.5" />
+<text x="56" y="393" font-size="20" fill="#81662d" font-weight="600" text-anchor="start">Optional Laya</text>
+<text x="56" y="424" font-size="16" fill="#4d5961" font-weight="400" text-anchor="start">LAYA_URL replaces the</text>
+<text x="56" y="450" font-size="16" fill="#4d5961" font-weight="400" text-anchor="start">model-based selector.</text>
+<text x="56" y="476" font-size="16" fill="#4d5961" font-weight="400" text-anchor="start">3 consecutive failures:</text>
+<text x="56" y="502" font-size="16" fill="#4d5961" font-weight="400" text-anchor="start">skip Laya until restart.</text>
+<text x="56" y="528" font-size="16" fill="#4d5961" font-weight="400" text-anchor="start"></text>
+<text x="56" y="554" font-size="16" fill="#4d5961" font-weight="400" text-anchor="start">Question goes to that URL;</text>
+<text x="56" y="580" font-size="16" fill="#4d5961" font-weight="400" text-anchor="start">it may be off this PC.</text>
+<rect x="324" y="671" width="824" height="289" rx="8" fill="none" stroke="#a0a9a3" stroke-width="1.5" />
+<text x="338" y="699" font-size="17" fill="#435e50" font-weight="600" text-anchor="start">3 · LOOP · up to 5 model turns; up to 4 tool calls per turn</text>
+<path d="M355 751 L815 751" fill="none" stroke="#65717a" stroke-width="1.8" marker-end="url(#arrow)" />
+<text x="585" y="739" font-size="16" fill="#222b31" font-weight="400" text-anchor="middle">Question + context + tool definitions</text>
+<path d="M815 800 L355 800" fill="none" stroke="#65717a" stroke-width="1.8" marker-end="url(#arrow)" stroke-dasharray="6 5"/>
+<text x="585" y="788" font-size="16" fill="#222b31" font-weight="400" text-anchor="middle">Requested tool calls</text>
+<path d="M355 849 L1075 849" fill="none" stroke="#65717a" stroke-width="1.8" marker-end="url(#arrow)" />
+<text x="715" y="837" font-size="16" fill="#222b31" font-weight="400" text-anchor="middle">Execute read-only tools</text>
+<path d="M1075 898 L355 898" fill="none" stroke="#65717a" stroke-width="1.8" marker-end="url(#arrow)" stroke-dasharray="6 5"/>
+<text x="715" y="886" font-size="16" fill="#222b31" font-weight="400" text-anchor="middle">Computed facts → model on next turn</text>
+<path d="M815 946 L355 946" fill="none" stroke="#65717a" stroke-width="1.8" marker-end="url(#arrow)" stroke-dasharray="6 5"/>
+<text x="585" y="934" font-size="16" fill="#222b31" font-weight="400" text-anchor="middle">Final answer</text>
+<path d="M355 1002 L125 1002" fill="none" stroke="#65717a" stroke-width="1.8" marker-end="url(#arrow)" stroke-dasharray="6 5"/>
+<text x="240" y="990" font-size="16" fill="#222b31" font-weight="400" text-anchor="middle">4 · NDJSON</text>
+<rect x="40" y="1039" width="1108" height="109" rx="8" fill="#e8ebe7" stroke="#395b78" stroke-width="1.5" />
+<text x="58" y="1068" font-size="20" fill="#395b78" font-weight="600" text-anchor="start">Page receives live steps, answer text and source data</text>
+<text x="58" y="1096" font-size="17" fill="#222b31" font-weight="400" text-anchor="start">Source buttons validate dates; opening an event also checks UID + start against the page calendar.</text>
+<text x="58" y="1122" font-size="17" fill="#222b31" font-weight="400" text-anchor="start">Model text stays plain text. Sources follow successful tools; unchecked replies carry a warning.</text>
+<rect x="40" y="1167" width="1108" height="105" rx="8" fill="#e8ebe7" stroke="#306b69" stroke-width="1.5" />
+<rect x="40" y="1177" width="4" height="85" fill="#306b69"/>
+<text x="60" y="1199" font-size="21" fill="#306b69" font-weight="600" text-anchor="start">14 read-only tools · code computes dates, free time, gaps and countdowns</text>
+<text x="60" y="1228" font-size="17" fill="#222b31" font-weight="400" text-anchor="start">list_calendars · list_events · get_event · up_next · conflicts · find_free_time · next_free_slot</text>
+<text x="60" y="1254" font-size="17" fill="#222b31" font-weight="400" text-anchor="start">get_working_hours · day_summary · time_until · busiest_day · search_events · list_all_day · recurring_summary</text>
+<text x="40" y="1304" font-size="17" fill="#705579" font-weight="400" text-anchor="start">Backup (if enabled): hosted network / 401 / 403 / 429 / 5xx failures → built-in model.</text>
+<text x="40" y="1332" font-size="17" fill="#705579" font-weight="400" text-anchor="start">3 consecutive model-client failures latch each lane; a working backup can still answer.</text>
+<text x="40" y="1360" font-size="17" fill="#705579" font-weight="400" text-anchor="start">Reset: server restart, settings/provider change, or a passing saved-settings connection test.</text>
+<text x="40" y="1408" font-size="14" fill="#4d5961" font-weight="400" text-anchor="start">CalendarViewer · Verified against repository code · 10 November 2026</text>
+</svg>
