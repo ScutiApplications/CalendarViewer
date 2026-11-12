@@ -4,11 +4,11 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 
 test('automatic checks never install; one explicit click starts download and installation', async () => {
-  const elements = Object.fromEntries(['check-updates', 'app-version', 'update-status', 'update-release', 'install-update', 'update-install-note', 'update-settings'].map(id => [id, { hidden: true, textContent: '', removeAttribute(name) { delete this[name]; } }]));
+  const elements = Object.fromEntries(['check-updates', 'app-version', 'update-status', 'update-release', 'install-update', 'update-install-note', 'update-settings', 'update-progress'].map(id => [id, { hidden: true, textContent: '', removeAttribute(name) { delete this[name]; } }]));
   let checks = 0, installs = 0, poll, interval, reloaded = false;
   let result = { status: 'available', currentVersion: '1.1.0', latestVersion: '1.2.0', releaseUrl: 'https://github.com/ScutiApplications/CalendarViewer/releases/tag/v1.2.0', download: {}, installation: { phase: 'idle', supported: true } };
   let installation = { phase: 'downloading', version: '1.2.0' };
-  const context = vm.createContext({ document: { getElementById: id => elements[id] },
+  const context = vm.createContext({ AbortSignal, document: { getElementById: id => elements[id] },
     location: { reload() { reloaded = true; } },
     setTimeout(fn) { poll = fn; }, setInterval(fn, ms) { interval = fn; assert.equal(ms, 6 * 60 * 60 * 1000); },
     apiJson: async () => ({ version: installation.phase === 'complete' ? '1.2.0' : '1.1.0' }),
@@ -35,9 +35,9 @@ test('automatic checks never install; one explicit click starts download and ins
 });
 
 test('automatic checks report unavailable installs, offline checks and failed installation', async () => {
-  const elements = Object.fromEntries(['check-updates', 'app-version', 'update-status', 'update-release', 'install-update', 'update-install-note', 'update-settings'].map(id => [id, { hidden: true, textContent: '', removeAttribute(name) { delete this[name]; } }]));
+  const elements = Object.fromEntries(['check-updates', 'app-version', 'update-status', 'update-release', 'install-update', 'update-install-note', 'update-settings', 'update-progress'].map(id => [id, { hidden: true, textContent: '', removeAttribute(name) { delete this[name]; } }]));
   let result = { status: 'available', currentVersion: '1.1.0', latestVersion: '1.2.0', download: {}, installation: { phase: 'idle', supported: false, unavailableReason: 'Git checkout' } };
-  const context = vm.createContext({ document: { getElementById: id => elements[id] }, setInterval() {}, setTimeout() {}, apiJson: async () => ({ version: '1.1.0' }), apiAction: async () => { if (result instanceof Error) throw result; return result; } });
+  const context = vm.createContext({ AbortSignal, document: { getElementById: id => elements[id] }, setInterval() {}, setTimeout() {}, apiJson: async () => ({ version: '1.1.0' }), apiAction: async () => { if (result instanceof Error) throw result; return result; } });
   vm.runInContext(fs.readFileSync('src/web/js/updates-ui.js', 'utf8'), context);
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(elements['install-update'].disabled, true); assert.match(elements['update-install-note'].textContent, /Git checkout/);

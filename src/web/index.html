@@ -73,8 +73,9 @@
     <p id="app-version">Checking installed version…</p>
     <p>Checks automatically on startup and every six hours.</p>
     <button id="check-updates" type="button">Check for updates</button>
-    <button id="install-update" type="button" hidden>Download and install</button>
     <p id="update-install-note" hidden></p>
+    <button id="install-update" type="button" aria-describedby="update-install-note update-status" hidden>Download and install</button>
+    <progress id="update-progress" max="100" aria-label="Update progress" hidden></progress>
     <p id="update-status" role="status" aria-live="polite" hidden></p>
     <a id="update-release" target="_blank" rel="noopener noreferrer" hidden>Release notes</a>
   </details>
