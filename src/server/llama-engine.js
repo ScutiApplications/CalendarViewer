@@ -47,7 +47,7 @@ function createLlamaEngine({ dir, fetch: fetchImpl = global.fetch, spawn: spawnI
   const assetSuffix = ASSETS[`${platform}-${arch}`] || '';
   const engineDir = path.join(dir, 'engine', RELEASE), modelFile = path.join(dir, 'models', MODEL.file);
   const exeName = platform === 'win32' ? 'llama-server.exe' : 'llama-server';
-  let job = null, child = null, starting = null, idle = null, current = null;
+  let job = null, starting = null, idle = null, current = null;
 
   // The program counts as installed only when its folder carries the .ok marker written after a complete unpack.
   async function search(folder, depth = 0) {

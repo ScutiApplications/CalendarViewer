@@ -78,7 +78,7 @@ function updateSourceHealth() {
       const line = create('span', 'source-sync');
       line.dataset.state = health.state;
       line.textContent = name + ': ' + describe(health);
-      line.title = name + ': ' + describe(health) + (health.fetchedAt == null ? '' : '\nLast successful refresh: ' + new Date(health.fetchedAt).toLocaleString());
+      line.title = line.textContent + (health.fetchedAt == null ? '' : '\nLast successful refresh: ' + new Date(health.fetchedAt).toLocaleString());
       label.append(line);
     }
   });
