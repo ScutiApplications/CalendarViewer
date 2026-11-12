@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cookies &amp; Local Storage · CalendarViewer</title><script src="/js/theme-init.js"></script>
+<link rel="stylesheet" href="/css/styles.css"><link rel="stylesheet" href="/css/privacy.css"></head>
+<body><div class="policy-page"><nav aria-label="Policy navigation"><a href="/">Back to calendar</a><a href="/privacy.html">Privacy Policy</a><a href="/terms.html">Terms of Use</a></nav>
+<main><h1>Cookies &amp; Local Storage</h1><p class="policy-meta">Philippines · Updated: 12 November 2026</p>
+<p>The standard CalendarViewer app does not set HTTP cookies and contains no advertising or analytics trackers. It uses your browser’s <code>localStorage</code> for local calendar features and preferences. Storage is associated with the app’s origin, including its port, and is not automatically shared between browsers or profiles.</p>
+<h2>What the browser stores</h2>
+<ul><li><strong>Calendars and caches:</strong> imported ICS content, feed snapshots, labels, colors and calendar visibility. These can contain private event information.</li>
+<li><strong>Preferences:</strong> theme (<code>calendar-theme</code>), layout/view, hidden cancelled events, working hours and automatic refresh interval.</li>
+<li><strong>Reminders:</strong> alert rules, mute settings and records used to avoid repeated alerts.</li>
+<li><strong>AI sharing choices:</strong> provider, notice revision and choice timestamp in separate keys named <code>ics-calendar-viewer.hostedConsent.v1.&lt;provider&gt;</code>. An affirmative choice is needed before hosted requests; it is not sent to an analytics service.</li>
+<li><strong>Release notes:</strong> last displayed version under <code>ics-calendar-viewer.releaseNotes.v1</code>, so update notes do not reopen on each visit.</li>
+<li><strong>Restore staging:</strong> a temporary browser storage entry used while validating/restoring a backup.</li></ul>
+<p>Calendar-related keys generally start with <code>ics-calendar-viewer.</code>. Local storage has no automatic expiry: entries remain until changed, removed, or cleared by you or your browser. A notice revision change invalidates old AI consent. Chat itself stays in page memory rather than local storage.</p>
+<h2>Your choices</h2>
+<p>Change preferences and remove calendars in the app. Manage or withdraw optional AI sharing under Calendar assistant settings → AI sharing consent. You can refuse hosted AI and continue using the calendar and installed local models. This version has no separate analytics or advertising cookie choice because those features are absent; it does not display an “accept all cookies” banner.</p>
+<p>To remove browser-held data, use your browser’s site-data controls for the CalendarViewer address. Export a backup first if you want to keep your calendars and settings. Clearing site data resets preferences, imported calendars, cached events, AI choices and release-note history. It does not remove server-side files, saved API keys or exported backups. See <a href="/privacy.html">Privacy Policy</a> for complete local removal.</p>
+<p>If storage is blocked or full, some settings cannot survive a reload. An AI choice can apply to the current page only; automatic release-note prompts are skipped when their display cannot be remembered. Manual release history remains available.</p>
+<h2>External destinations</h2>
+<p>Policy, meeting and provider links can open other websites. Those sites may use their own cookies and storage under their own policies. CalendarViewer does not embed their pages or tracking scripts. Modified or hosted deployments may behave differently and need an updated notice.</p>
+</main><footer><a href="/">CalendarViewer</a><a href="/privacy.html">Privacy Policy</a><a href="/terms.html">Terms of Use</a></footer></div></body></html>

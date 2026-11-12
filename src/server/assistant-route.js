@@ -3,6 +3,7 @@ const { readBody, send, sendJson, SECURITY_HEADERS } = require('./http');
 const { ServiceError, ServiceUnreachable, createModelClient } = require('./model-client');
 const { assistantConfig, assistantLocks, cpuThreadLimit } = require('./assistant-config');
 const { PROVIDERS, isHosted, needsKey } = require('./providers');
+const Consent = require('../shared/privacy-consent');
 // Remembered chat sent by the page: an optional summary and up to 3 recent exchanges. Throws when the shape is wrong; long text is cut.
 function cleanMemory(value) {
   if (value === undefined) return { summary: '', turns: [] };
@@ -60,25 +61,30 @@ function createAssistantRoute({ config, client, assistant, refuseUnlessLocalActi
     let target;
     try { target = assistantConfig(merge(body, false), env); } catch (e) { return send(res, 400, e.message); }
     if (needsKey(target.provider) && !target.token) return sendJson(res, 200, { ok: false, reason: 'no-key' });
+    if (isHosted(target.provider) && !Consent.valid(body.hostedConsent, target.provider)) return send(res, 403, 'Choose AI sharing consent for this provider before testing the connection.');
     // Readiness alone cannot verify credentials or tool support; a one-word chat with one tool does.
     const probe = { messages: [{ role: 'user', content: 'ping' }], tools: [{ name: 'ping', description: 'Unused.', parameters: { type: 'object', properties: {} } }], temperature: 0, max_tokens: 8 };
+    const controller = new AbortController();
+    const cancel = () => { if (!res.writableEnded) controller.abort(); };
+    res.once('close', cancel);
     try {
       // The test checks the chosen provider alone, so a working backup cannot hide a broken key.
       const probeClient = createClient({ provider: target.provider, model: target.model, url: target.url, token: target.token, fallback: '', engine, timeoutMs: 30000 });
       const health = await probeClient.health();
       const model = String(health.model || '').slice(0, 120) || null;
       if (health.ready !== true) return sendJson(res, 200, { ok: false, reason: 'not-ready', model });
-      await probeClient.chat(probe);
+      await probeClient.chat(probe, { signal: controller.signal });
       // A passing check of the saved settings also clears the offline latch left by earlier failures.
-      if (!Object.keys(body).length) client.configure?.({ provider: config.provider, model: config.model, url: config.url, token: config.token, fallback: config.fallback });
+      if (!Object.keys(body).some(key => key !== 'hostedConsent')) client.configure?.({ provider: config.provider, model: config.model, url: config.url, token: config.token, fallback: config.fallback });
       return sendJson(res, 200, { ok: true, model });
     } catch (e) {
+      if (controller.signal.aborted) return;
       if (e instanceof ServiceError) {
         const reason = { 401: 'token-rejected', 403: 'token-rejected', 422: 'no-tools', 429: 'rate-limited', 503: 'not-ready' }[e.status] || 'service-error';
         return sendJson(res, 200, { ok: false, reason, status: e.status, ...(e.detail ? { detail: String(e.detail).slice(0, 200) } : {}) });
       }
       return sendJson(res, 200, { ok: false, reason: 'unreachable', ...(e instanceof ServiceUnreachable && e.code ? { code: e.code } : {}) });
-    }
+    } finally { res.removeListener('close', cancel); }
   }
   async function saveSettings(req, res) {
     const body = await readJson(req, res, 4096, 'Send a JSON object with enabled and a token.');
@@ -148,14 +154,17 @@ function createAssistantRoute({ config, client, assistant, refuseUnlessLocalActi
     if (statusRoute || req.method !== 'POST') return send(res, 405, 'Use GET for status or POST for a question.');
     if (!config.enabled) return send(res, 404, 'Assistant disabled.');
     if (busy) return send(res, 429, 'Assistant is busy. Stop the current answer first.');
-    let question, memory, workingHours;
+    let question, memory, workingHours, hostedConsent;
     try {
       const body = JSON.parse(await readBody(req, 32768));
       question = body?.question;
       if (typeof question !== 'string' || !question.trim() || question.length > 2000) throw new Error('invalid');
       memory = cleanMemory(body?.memory);
       workingHours = cleanHours(body?.workingHours);
+      hostedConsent = body?.hostedConsent;
     } catch (e) { return send(res, e.status === 413 ? 413 : 400, 'Send a question of 1–2000 characters in a JSON object.'); }
+    // Validate after the body is read: another tab may have switched the provider while it arrived.
+    if (isHosted(config.provider) && !Consent.valid(hostedConsent, config.provider)) return send(res, 403, 'Choose AI sharing consent for the selected provider before sending a question.');
     if (busy) return send(res, 429, 'Assistant is busy.');
     busy = true;
     const controller = activeController = new AbortController();

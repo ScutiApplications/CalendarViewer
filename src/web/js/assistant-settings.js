@@ -21,6 +21,14 @@ function initAssistantSettings() {
   const testButton = document.getElementById('assistant-test');
   const settingsDialog = document.getElementById('assistant-settings-dialog');
   const settingsOpen = document.getElementById('assistant-settings-open');
+  const consentManage = document.getElementById('assistant-consent-manage');
+  const consentState = document.getElementById('assistant-consent-state');
+  function showConsent() {
+    if (consentManage) consentManage.hidden = provider.value === 'llamacpp';
+    if (consentState) consentState.textContent = globalThis.CalendarPrivacy?.description(provider.value) || '';
+  }
+  if (consentManage) consentManage.onclick = async () => { await globalThis.CalendarPrivacy?.manage(provider.value); showConsent(); };
+  globalThis.addEventListener?.('calendar-consent-change', showConsent);
   settingsOpen.onclick = () => {
     settingsDialog.showModal();
     (enabled.disabled ? provider : enabled).focus();
@@ -47,6 +55,7 @@ function initAssistantSettings() {
     const tokenState = document.getElementById('assistant-token-state');
     tokenState.textContent = locked ? 'Key managed by the server environment.' : set ? 'Key saved. Leave blank to keep it.' : 'No key saved.';
     if (keyed) model.value = current.models[name] || '';
+    showConsent();
   }
   function show(data) {
     current = data;
@@ -124,13 +133,20 @@ function initAssistantSettings() {
   const reasons = { 'not-ready': 'The model is not ready. For the built-in model press Download first.', 'token-rejected': 'Reached the service, but it rejected the access token or API key.', 'no-key': 'Enter an API key first.', 'no-tools': 'Reached the service, but it does not accept tool calls. Choose a model that supports tool calls in the assistant settings.', 'rate-limited': 'Reached the service, but it is rate limiting this token.', 'service-error': 'Reached the service, but it returned an error.', unreachable: 'Could not reach the service. Check the address, port, firewall and internet connection.' };
   testButton.onclick = async () => {
     testButton.disabled = true; state.textContent = 'Testing…';
+    let release = () => {};
     try {
-      const response = await fetch('/api/assistant/test', { method: 'POST', headers, body: JSON.stringify(fields()) });
+      const body = fields();
+      // The selected fields are captured before the prompt; saving keys alone never grants sharing.
+      if (body.provider !== 'llamacpp' && !await globalThis.CalendarPrivacy?.ensure(body.provider)) { state.textContent = 'Connection not tested. AI sharing consent was not given.'; return; }
+      body.hostedConsent = globalThis.CalendarPrivacy?.receipt(body.provider);
+      const controller = new AbortController();
+      release = globalThis.CalendarPrivacy?.track(controller, body.provider) || release;
+      const response = await fetch('/api/assistant/test', { method: 'POST', headers, body: JSON.stringify(body), signal: controller.signal });
       if (!response.ok) throw new Error(assistantStaleServer(response) || (await response.text()) || 'Could not test.');
       const result = await response.json();
       state.textContent = result.ok ? `Connected${result.model ? ' · ' + result.model : ''}. Press Save to use it.` : (reasons[result.reason] || 'Connection failed.') + (result.code ? ` (${result.code})` : '') + (result.status ? ` (HTTP ${result.status})` : '') + (result.detail ? ': ' + result.detail : '');
     } catch (e) { state.textContent = 'Not tested: ' + e.message; }
-    finally { testButton.disabled = false; }
+    finally { release(); testButton.disabled = false; showConsent(); }
   };
   clear.onclick = () => send({ provider: provider.value, token: '' }, 'Removed.');
   fetch('/api/assistant/config', { headers }).then(r => r.ok ? r.json() : Promise.reject()).then(data => { state.textContent = show(data); }).catch(() => { state.textContent = 'Settings unavailable: calendar server unreachable.'; });

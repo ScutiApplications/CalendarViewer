@@ -138,6 +138,16 @@ The interface follows your system's light/dark preference unless you pick Light 
 
 ## Privacy
 
+Settings links to local **Privacy Policy**, **Terms of Use** (T&C/TOS combined), and **Cookies & Local Storage** pages. These describe the standard local app for a Philippine audience under the developer name ScutiApplications. They do not assert a registered company or certify compliance. The repository is the interim contact; no dedicated private privacy email is published. A hosted/organizational deployment must supply accurate responsible-party and contact information for its own processing.
+
+No analytics or advertising cookies are included, so this version has no blanket cookie banner. Browser storage supports calendars, preferences, reminders, per-provider sharing choices and release-note history. Notices accompany calendar imports; see the policy pages for retention and local removal instructions.
+
+**Hosted AI is a separate opt-in.** Before sending a question or connection probe, the browser asks permission for the named provider and notice revision. Refusal leaves the calendar and local models usable. Saving an API key does not grant consent. Manage or withdraw the choice in **Calendar assistant settings → AI sharing consent**, or from the chat. Withdrawal aborts this browser's active hosted requests and clears chat context; it cannot recall already transmitted data. Other tabs in the same origin receive the withdrawal. With blocked/full storage, choices can apply only to the current page and the UI explains that limitation. Choices are not exported in calendar backups.
+
+Direct hosted assistant requests must include `hostedConsent: { provider: "openai", accepted: true, revision: "2026-11-12" }` (use the selected provider and the revision in `src/shared/privacy-consent.js`). The server refuses missing, declined, stale or wrong-provider acknowledgements before model use. This is an explicit local request acknowledgement, not user authentication or consent on behalf of other calendar participants. Built-in requests do not require it.
+
+**What’s new** in update settings opens bundled release history offline. Notes appear once when this browser first encounters an installed version, then on version increases; skipped-version changes are included. They wait for other dialogs to close. Browser storage remembers presentation; clearing it resets history. If storage is unavailable, automatic prompts are skipped and manual history remains available. When bumping `VERSION`, add the corresponding published changes to `src/shared/release-notes.js`; never label unpublished changes as part of an older release.
+
 Calendar data stays on your machine. Remote feed links are saved in `data/feeds.json`, which the server creates as needed. Imported files, cached feed snapshots, and preferences are stored in your browser's local storage; use the same browser profile and address to retain them, because clearing site data removes them.
 The server listens only on `127.0.0.1`. This application does not edit the source calendars.
 The [MCP endpoint](#mcp-server) returns event titles, locations and descriptions to any local program that calls it. The endpoint has no token, so keep the server on `127.0.0.1`.

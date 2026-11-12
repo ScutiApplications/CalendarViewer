@@ -17,6 +17,7 @@ function initAssistantUI() {
   const newChat = document.getElementById('assistant-new');
   const picker = document.getElementById('assistant-provider-pick');
   const check = document.getElementById('assistant-check');
+  const sharing = document.getElementById('assistant-chat-consent');
   // The chat is remembered in this page only: a summary of older exchanges plus up to 3 recent ones. It is dropped after
   // 5 minutes without use, on New chat, and on reload.
   const CHAT_MS = 5 * 60 * 1000;
@@ -26,7 +27,7 @@ function initAssistantUI() {
     clearTimeout(expiry); expiry = null; memory = { summary: '', turns: [] };
     thread.replaceChildren(); state.textContent = message;
   }
-  let active = null, reachable = false;
+  let active = null, reachable = false, currentProvider = null, preparing = false;
   const headers = { 'X-Calendar-Action': '1', 'Content-Type': 'application/json' };
   async function status() {
     refresh.disabled = true;
@@ -34,9 +35,12 @@ function initAssistantUI() {
       const response = await fetch('/api/assistant/status', { headers });
       if (!response.ok) throw new Error('status');
       const data = await response.json();
+      if (currentProvider && currentProvider !== data.provider) { active?.abort(); resetChat('Provider changed. Previous chat cleared.'); }
+      currentProvider = data.provider;
+      if (sharing) sharing.hidden = data.provider === 'llamacpp';
       launcher.hidden = !data.enabled;
       reachable = data.reachable;
-      document.getElementById('assistant-privacy').textContent = `Questions and event details go to ${data.provider === 'llamacpp' ? 'the built-in model on this PC and go no further' : `${data.providerLabel || data.provider} over the internet`}. Dates use ${data.timezone}. Answers can be wrong; check the calendar sources below. Recent questions and answers are sent along for context, then forgotten after 5 minutes without use or when you press New chat.`;
+      document.getElementById('assistant-privacy').textContent = `Questions and event details go to ${data.provider === 'llamacpp' ? 'the built-in model on this PC and go no further' : `${data.providerLabel || data.provider} over the internet only with your sharing consent`}. Dates use ${data.timezone}. Answers can be wrong; check the calendar sources below. Recent questions and answers are sent along for context, then forgotten after 5 minutes without use or when you press New chat.`;
       const load = document.getElementById('assistant-load');
       load.textContent = data.backend && data.backend !== 'cpu' ? 'Automatic GPU acceleration: ' + (data.device || data.backend) + '.' :
         data.load ? `CPU mode. Estimated memory use: ${data.load.ramPercent}% of this PC; estimated CPU use while answering: ${data.load.cpuPercent}%.` : '';
@@ -47,10 +51,25 @@ function initAssistantUI() {
         data.tokenState === 'missing' ? 'No API key is set. Add one under Calendar assistant in the sidebar.' :
         data.provider === 'llamacpp' ? 'The built-in model is not ready. Download it in the Calendar assistant settings.' :
         'Assistant offline. Check the model service, then press Check Connection. After three failures, restart the calendar server.';
-      send.disabled = !reachable || !!active;
+      send.disabled = !reachable || !!active || preparing;
+      return data;
     } catch { reachable = false; send.disabled = true; if (dialog.open) state.textContent = 'Assistant offline: calendar server unavailable.'; }
     finally { refresh.disabled = false; }
   }
+  async function authorizeProvider() {
+    const info = await status();
+    if (!info) throw new Error('Calendar server unavailable. Try again.');
+    if (info.provider !== 'llamacpp' && !await globalThis.CalendarPrivacy?.ensure(info.provider)) return null;
+    return { provider: info.provider, hostedConsent: globalThis.CalendarPrivacy?.receipt(info.provider) };
+  }
+  if (sharing) sharing.onclick = () => globalThis.CalendarPrivacy?.manage(currentProvider);
+  globalThis.addEventListener?.('calendar-consent-change', event => {
+    if (event.detail?.warning) check.textContent = event.detail.warning;
+    const withdrawn = event.detail?.withdrawn && (event.detail.provider === null || event.detail.provider === currentProvider);
+    if (currentProvider && currentProvider !== 'llamacpp' && (withdrawn || !globalThis.CalendarPrivacy?.receipt(currentProvider))) {
+      active?.abort(); resetChat('AI sharing consent withdrawn. Previous chat cleared.');
+    }
+  });
   // Provider dropdown: every provider is listed, but only the ones that are set up can be picked.
   async function loadProviders() {
     try {
@@ -79,14 +98,21 @@ function initAssistantUI() {
   const failureText = r => (FAILURES[r.reason] || 'Connection failed.') + (r.code ? ` (${r.code})` : '') + (r.status ? ` (HTTP ${r.status})` : '') + (r.detail ? ': ' + r.detail : '');
   // Check Connection sends a real one-word test through the chosen provider and shows the outcome under the chat.
   async function checkConnection() {
+    if (active || preparing) return;
     refresh.disabled = true; check.className = 'chat-check'; check.textContent = 'Checking the connection…';
+    let release = () => {};
     try {
-      const response = await fetch('/api/assistant/test', { method: 'POST', headers, body: '{}' });
+      const permission = await authorizeProvider();
+      if (!permission) { check.textContent = 'Connection not tested. AI sharing consent was not given.'; return; }
+      const controller = new AbortController();
+      release = globalThis.CalendarPrivacy?.track(controller, permission.provider) || release;
+      const response = await fetch('/api/assistant/test', { method: 'POST', headers, body: JSON.stringify({ hostedConsent: permission.hostedConsent }), signal: controller.signal });
       if (!response.ok) throw new Error((await response.text()) || 'Could not check.');
       const result = await response.json();
       check.className = 'chat-check ' + (result.ok ? 'ok' : 'bad');
       check.textContent = result.ok ? `Connected${result.model ? ' · ' + result.model : ''}.` : failureText(result);
     } catch (e) { check.className = 'chat-check bad'; check.textContent = 'Could not check: ' + e.message; }
+    finally { release(); refresh.disabled = false; }
     await status();
   }
   function stopAnswer() { active?.abort(); }
@@ -130,9 +156,17 @@ function initAssistantUI() {
   }
   document.getElementById('assistant-form').onsubmit = async event => {
     event.preventDefault();
-    if (active || !reachable || !input.value.trim()) return;
+    if (active || preparing || !reachable || !input.value.trim()) return;
+    let permission;
+    preparing = true; send.disabled = true;
+    try { permission = await authorizeProvider(); }
+    catch (error) { state.textContent = 'Question not sent: ' + error.message; return; }
+    finally { preparing = false; send.disabled = !reachable || !!active; }
+    if (!permission) { state.textContent = 'Question not sent. AI sharing consent was not given; the local calendar remains available.'; return; }
+    if (!dialog.open || !reachable || !input.value.trim()) return;
     const question = input.value.trim(); input.value = '';
     const controller = new AbortController(); active = controller;
+    const release = globalThis.CalendarPrivacy?.track(controller, permission.provider) || (() => {});
     send.disabled = true; send.hidden = true; stop.hidden = false; stop.disabled = false; input.disabled = true; refresh.disabled = true; newChat.disabled = true; picker.disabled = true; keepChat();
     const started = Date.now();
     thread.append(create('div', 'msg user', question));
@@ -145,7 +179,7 @@ function initAssistantUI() {
     const ticker = setInterval(() => { if (!bubble.textContent) { const seconds = Math.round((Date.now() - started) / 1000); state.textContent = `Thinking… ${seconds} s` + (seconds >= 20 ? '. A slow model can take a few minutes; press Stop to cancel.' : ''); } }, 1000);
     const readerState = { done: false, failed: false };
     const consume = line => {
-      if (!line.trim()) return;
+      if (controller.signal.aborted || !line.trim()) return;
       const item = JSON.parse(line);
       if (item.type === 'step') {
         // What the assistant is doing right now, shown in the order it happens; earlier steps are marked done.
@@ -162,7 +196,7 @@ function initAssistantUI() {
     };
     let reader;
     try {
-      const response = await fetch('/api/assistant', { method: 'POST', headers, body: JSON.stringify({ question, memory, workingHours: typeof workingHours === 'object' && workingHours ? { start: workingHours.start, end: workingHours.end } : undefined }), signal: controller.signal });
+      const response = await fetch('/api/assistant', { method: 'POST', headers, body: JSON.stringify({ question, memory, hostedConsent: permission.hostedConsent, workingHours: typeof workingHours === 'object' && workingHours ? { start: workingHours.start, end: workingHours.end } : undefined }), signal: controller.signal });
       if (!response.ok) throw new Error(await response.text());
       reader = response.body.getReader();
       const decoder = new TextDecoder(); let buffer = '', bytes = 0;
@@ -174,10 +208,11 @@ function initAssistantUI() {
         while ((at = buffer.indexOf('\n')) >= 0) { consume(buffer.slice(0, at)); buffer = buffer.slice(at + 1); }
       }
       buffer += decoder.decode(); consume(buffer);
-      if (readerState.done && !readerState.failed) memory.turns.push({ question, answer: bubble.textContent.slice(0, 1500) });
+      if (readerState.done && !readerState.failed && !controller.signal.aborted) memory.turns.push({ question, answer: bubble.textContent.slice(0, 1500) });
       if (!readerState.failed) state.textContent = readerState.done ? 'Answer complete. The chat is remembered for 5 minutes.' + (readerState.notice ? ' ' + readerState.notice : '') : 'Answer interrupted. Please try again.';
     } catch (e) { state.textContent = controller.signal.aborted ? 'Answer stopped.' : 'Assistant error: ' + e.message; }
     finally {
+      release();
       if (reader) { await reader.cancel().catch(() => {}); reader.releaseLock(); }
       clearInterval(ticker);
       // A reply with no text shows why, in the chat itself.

@@ -3,6 +3,8 @@ const assert = require('node:assert/strict');
 const http = require('node:http');
 const { createAssistantRoute } = require('../src/server/assistant-route');
 const { ServiceError, ServiceUnreachable } = require('../src/server/model-client');
+const Consent = require('../src/shared/privacy-consent');
+const acknowledgement = provider => ({ provider, accepted: true, revision: Consent.REVISION });
 
 async function fixture(t, enabled = true, answer, extra = {}) {
   let healthCalls = 0;
@@ -123,7 +125,7 @@ test('test connection checks health and a tool chat with the typed key, without 
   let plan = 'ok';
   const extra = { route: { saved: { provider: 'openai', keys: { openai: 'kept' } }, env: {}, persist() { throw new Error('must not save'); }, createClient: options => { calls.push(options); return plans[plan]; } } };
   const { request } = await fixture(t, false, undefined, extra);
-  const test = body => request('/api/assistant/test', { method: 'POST', body: JSON.stringify(body) }).then(r => r.json().then(j => [r.status, j]));
+  const test = body => request('/api/assistant/test', { method: 'POST', body: JSON.stringify({ ...body, hostedConsent: acknowledgement('openai') }) }).then(r => r.json().then(j => [r.status, j]));
   assert.deepEqual(await test({}), [200, { ok: true, model: 'luna-6' }]);
   assert.equal(calls[0].token, 'kept');
   plan = 'notReady'; assert.deepEqual(await test({ token: 'new' }), [200, { ok: false, reason: 'not-ready', model: 'luna-6' }]);
@@ -163,7 +165,7 @@ test('test connection for a hosted provider needs a key and probes with the type
   const { request } = await fixture(t, true, undefined, extra);
   const test = body => request('/api/assistant/test', { method: 'POST', body: JSON.stringify(body) }).then(r => r.json());
   assert.deepEqual(await test({ provider: 'openai' }), { ok: false, reason: 'no-key' });
-  assert.deepEqual(await test({ provider: 'gemini', token: 'k', model: 'gemini-x' }), { ok: true, model: 'gemini-x' });
+  assert.deepEqual(await test({ provider: 'gemini', token: 'k', model: 'gemini-x', hostedConsent: acknowledgement('gemini') }), { ok: true, model: 'gemini-x' });
   assert.deepEqual([probes.length, probes[0].provider, probes[0].token, probes[0].model], [1, 'gemini', 'k', 'gemini-x']);
 });
 
@@ -254,4 +256,33 @@ test('changing provider aborts the answer that belonged to the previous provider
   const saved = await request('/api/assistant/config', { method: 'PUT', body: '{"provider":"openai","token":"test-key"}' });
   assert.equal(saved.status, 200); assert.equal(signal.aborted, true);
   await answer.text();
+});
+
+test('hosted questions reject missing, declined, stale and wrong-provider consent before answering', async t => {
+  let answers = 0;
+  const { request } = await fixture(t, true, async (_question, { emit }) => { answers++; emit({ type: 'done' }); }, {
+    route: { config: { enabled: true, provider: 'openai', token: 'k' } }
+  });
+  const post = hostedConsent => request('/api/assistant', { method: 'POST', body: JSON.stringify({ question: 'Private calendar question', hostedConsent }) });
+  for (const value of [undefined, null, {}, { ...acknowledgement('openai'), accepted: false }, { ...acknowledgement('openai'), revision: 'old' }, acknowledgement('gemini')]) {
+    assert.equal((await post(value)).status, 403);
+  }
+  assert.equal(answers, 0);
+  const accepted = await post(acknowledgement('openai'));
+  assert.equal(accepted.status, 200); await accepted.text();
+  assert.equal(answers, 1);
+});
+
+test('saving a hosted provider does not grant consent for its probe or questions', async t => {
+  let probes = 0;
+  const saved = {};
+  const { request } = await fixture(t, true, undefined, { route: { saved, env: {}, createClient: () => { probes++; throw new Error('must not contact provider'); } } });
+  const put = await request('/api/assistant/config', { method: 'PUT', body: JSON.stringify({ provider: 'anthropic', token: 'k', hostedConsent: acknowledgement('anthropic') }) });
+  assert.equal(put.status, 200); await put.text();
+  assert.equal(Object.hasOwn(saved, 'hostedConsent'), false);
+  for (const hostedConsent of [undefined, acknowledgement('openai'), { ...acknowledgement('anthropic'), revision: 'old' }]) {
+    assert.equal((await request('/api/assistant/test', { method: 'POST', body: JSON.stringify({ hostedConsent }) })).status, 403);
+  }
+  assert.equal(probes, 0);
+  assert.equal((await request('/api/assistant', { method: 'POST', body: '{"question":"hello"}' })).status, 403);
 });

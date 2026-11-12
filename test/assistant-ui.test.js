@@ -50,8 +50,9 @@ test('disabled UI stays hidden; enabled UI streams inert text, navigates known e
     calendar: { gotoDate() { navigated = true; } }, sources: [], expandSources: () => [known], showEventDialog() { opened = true; },
     fetch: async (url, opts) => {
       calls++;
-      if (url.endsWith('/status')) return new Response(JSON.stringify({ enabled, reachable: true, model: 'test', timezone: 'Asia/Manila' }));
+      if (url.endsWith('/status')) return new Response(JSON.stringify({ enabled, provider: 'llamacpp', reachable: true, model: 'test', timezone: 'Asia/Manila' }));
       if (url.endsWith('/providers')) return new Response(JSON.stringify({ current: 'llamacpp', locked: false, items: [] }));
+      if (url.endsWith('/test')) return new Response(JSON.stringify({ ok: true, model: 'test' }));
       assert.equal(JSON.parse(opts.body).question, 'Thursday?');
       return new Response([
         { type: 'sources', data: { title: '<script>bad</script>' }, records: [{ uid: 'a', start: known.start.toISOString(), title: 'Known event' }] },
@@ -94,13 +95,14 @@ test('chat memory: sends earlier exchanges, applies summaries, New chat and the 
     Date, AbortController, TextDecoder, setInterval, clearInterval, Math,
     setTimeout: (fn, ms) => { timer = { fn, ms }; return 1; }, clearTimeout: () => { timer = null; },
     fetch: async (url, opts) => {
-      if (url.endsWith('/status')) return new Response(JSON.stringify({ enabled: true, reachable: true, timezone: 'UTC' }));
+      if (url.endsWith('/status')) return new Response(JSON.stringify({ enabled: true, provider: 'llamacpp', reachable: true, timezone: 'UTC' }));
       if (url.endsWith('/providers')) return new Response(JSON.stringify({ current: 'llamacpp', locked: false, items: [] }));
       bodies.push(JSON.parse(opts.body)); return new Response(replies.map(JSON.stringify).join('\n'));
     }
   });
   loadUI(context);
   await new Promise(resolve => setImmediate(resolve));
+  elements['assistant-open'].onclick();
   const ask = async text => { elements['assistant-question'].value = text; await elements['assistant-form'].onsubmit({ preventDefault() {} }); };
   await ask('first'); await ask('second');
   assert.deepEqual(bodies[0].memory, { summary: '', turns: [] });
@@ -135,7 +137,7 @@ test('Check Connection shows its result; the provider dropdown lists all provide
     document: { getElementById: id => elements[id], createElement: () => new Element() },
     Date, AbortController, TextDecoder, setInterval, clearInterval, setTimeout: () => 1, clearTimeout() {}, Math,
     fetch: async (url, opts) => {
-      if (url.endsWith('/status')) return new Response(JSON.stringify({ enabled: true, reachable: true, timezone: 'UTC' }));
+      if (url.endsWith('/status')) return new Response(JSON.stringify({ enabled: true, provider: 'llamacpp', reachable: true, timezone: 'UTC' }));
       if (url.endsWith('/providers')) return new Response(JSON.stringify({ current: 'anthropic', locked: false, items: [
         { name: 'anthropic', label: 'Anthropic', available: true }, { name: 'openai', label: 'OpenAI', available: false, hint: 'Add an API key.' }, { name: 'llamacpp', label: 'Built-in', available: true }] }));
       if (url.endsWith('/test')) return new Response(JSON.stringify(testResult));

@@ -1,0 +1,37 @@
+/* Reading and consent surfaces inherit the calendar's theme and control vocabulary. */
+.policy-page { max-width: 76ch; margin: 0 auto; padding: 32px 24px 64px; font-size: 16px; line-height: 1.7; overflow-wrap: anywhere; }
+.policy-page main { display: block; padding: 0; overflow: visible; }
+.policy-page h1 { margin: 32px 0 12px; font-size: clamp(28px, 5vw, 36px); line-height: 1.2; text-wrap: balance; }
+.policy-page h2 { margin: 32px 0 8px; font-size: 21px; line-height: 1.35; }
+.policy-page p, .policy-page ul { margin: 8px 0 16px; }
+.policy-page li + li { margin-top: 8px; }
+.policy-page nav, .policy-page footer { display: flex; flex-wrap: wrap; gap: 8px 20px; }
+.policy-page footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border); }
+.policy-page a, .policy-links a, .privacy-hint a, .privacy-dialog a, #assistant-hosted-note a { color: var(--accent); text-underline-offset: .2em; }
+.policy-page a:focus-visible, .policy-links a:focus-visible, .privacy-hint a:focus-visible, .privacy-dialog a:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+.policy-meta, .privacy-hint { color: var(--muted); }
+.privacy-hint { font-size: 12px; line-height: 1.6; }
+.policy-links { display: grid; gap: 12px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 12px; }
+.policy-links a { width: fit-content; }
+.privacy-controls { padding: 12px 0; border-block: 1px solid var(--border); }
+.privacy-controls p { margin: 0 0 8px; }
+.privacy-controls button, #show-release-notes { min-height: 44px; }
+#assistant-chat-consent { align-self: flex-start; flex-shrink: 0; min-height: 36px; margin-bottom: 8px; }
+.privacy-dialog { max-width: 640px; max-height: 85dvh; overflow: auto; box-shadow: none; }
+.privacy-dialog .dialog-body { padding: 24px; }
+.privacy-dialog p, .privacy-dialog li { line-height: 1.65; overflow-wrap: anywhere; }
+.privacy-dialog li + li { margin-top: 8px; }
+.privacy-dialog .privacy-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+.privacy-actions button { min-height: 44px; }
+.privacy-dialog button:disabled { cursor: wait; opacity: .65; }
+.release-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.release-heading h2 { margin-right: 0; }
+.release-entry + .release-entry { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border); }
+.release-entry h3 { margin: 0 0 8px; font-size: 16px; font-variant-numeric: tabular-nums; }
+.release-entry ul { padding-left: 22px; margin: 0; }
+@media (max-width: 600px) {
+  .policy-page { padding: 20px 20px 40px; }
+  .privacy-dialog .dialog-body { padding: 20px; }
+  .privacy-actions { flex-direction: column; }
+  .privacy-actions button { width: 100%; }
+}

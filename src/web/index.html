@@ -12,10 +12,13 @@
 <script src="/shared/backup.js"></script>
 <script src="/shared/storage.js"></script>
 <script src="/shared/calendar-layout.js"></script>
+<script src="/shared/privacy-consent.js"></script>
+<script src="/shared/release-notes.js"></script>
 <script src="/js/backup-ui.js"></script>
 <link rel="stylesheet" href="/css/styles.css">
 <link rel="stylesheet" href="/css/responsive.css">
 <link rel="stylesheet" href="/css/assistant.css">
+<link rel="stylesheet" href="/css/privacy.css">
 </head>
 <body>
 <div class="app">
@@ -42,6 +45,7 @@
   <label id="drop" hidden>Drop .ics files here or click to choose
     <input id="file" type="file" accept=".ics,text/calendar" multiple hidden>
   </label>
+  <p class="privacy-hint">Add or import only calendars you are authorized to use. Links may grant private access. <a href="/privacy.html" target="_blank" rel="noopener noreferrer">How calendar data is handled</a></p>
 </div>
 <div id="sources" role="list"></div>
 <div class="alerts-panel" aria-label="Settings">
@@ -78,9 +82,12 @@
     <progress id="update-progress" max="100" aria-label="Update progress" hidden></progress>
     <p id="update-status" role="status" aria-live="polite" hidden></p>
     <a id="update-release" target="_blank" rel="noopener noreferrer" hidden>Release notes</a>
+    <button id="show-release-notes" type="button" aria-haspopup="dialog" aria-controls="release-notes-dialog">What’s new</button>
+    <p id="release-notes-state" role="status"></p>
   </details>
+  <nav class="policy-links" aria-label="Policies"><a href="/privacy.html" target="_blank" rel="noopener noreferrer">Privacy Policy</a><a href="/terms.html" target="_blank" rel="noopener noreferrer">Terms of Use</a><a href="/cookies.html" target="_blank" rel="noopener noreferrer">Cookies &amp; Local Storage</a></nav>
 </div>
-<div id="drop-overlay" class="drop-overlay" hidden>Drop .ics files to add</div>
+<div id="drop-overlay" class="drop-overlay" hidden><span>Drop .ics files to add</span><small>Import only calendars you are authorized to use. Files are stored locally. See Privacy Policy in Settings.</small></div>
 </aside>
 <main>
 <section class="compact-calendar" aria-label="Date navigation">
@@ -196,7 +203,8 @@
 
 
     <p id="assistant-builtin-note" hidden>Both models run on this PC. <strong>Download Laya and MiniCPM</strong> installs Laya for tool selection, MiniCPM5-2B for answers, and their private runtimes. No separate Python setup is needed. Downloads are checked against pinned checksums or the package lock. MiniCPM detects compatible GPUs automatically and uses CPU otherwise. Both models stop when idle and run only with this built-in provider selected.</p>
-    <p id="assistant-hosted-note" hidden>Questions and calendar details are sent to the chosen provider over the internet, and their terms apply. Saved API keys are never shown again. The model name can be changed if your account uses a different one.</p>
+    <p id="assistant-hosted-note" hidden>Saving settings stores your key on this PC. Hosted questions and connection tests need a separate sharing choice. Provider terms apply; model names can be changed for your account. <a href="/privacy.html" target="_blank" rel="noopener noreferrer">Privacy Policy</a></p>
+    <section class="privacy-controls" aria-label="AI sharing consent"><p id="assistant-consent-state" class="privacy-hint" role="status"></p><button id="assistant-consent-manage" type="button">AI sharing consent</button></section>
   <div class="assistant-settings-footer"><p id="assistant-settings-state" role="status" aria-live="polite"></p><div class="assistant-actions"><button id="assistant-test" type="button">Test connection</button><button id="assistant-save" type="submit" class="primary">Save</button></div></div>
     </form>
 </div></dialog>
@@ -205,6 +213,7 @@
 <dialog id="assistant-dialog" aria-labelledby="assistant-title" aria-describedby="assistant-privacy"><div class="dialog-body assistant-chat">
   <div class="assistant-heading"><svg class="assistant-heading-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5Z"/><path d="M8 10h8M8 14h5"/></svg><div><h2 id="assistant-title">Calendar assistant</h2><p id="assistant-state" role="status" aria-live="polite"></p></div><select id="assistant-provider-pick" class="chat-provider" aria-label="AI provider"></select><button id="assistant-new" type="button" class="chat-new">New chat</button><button id="assistant-close" type="button" class="icon-button" aria-label="Close calendar assistant"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
   <p id="assistant-privacy" class="assistant-notice"></p>
+  <button id="assistant-chat-consent" type="button" class="chat-link" hidden>AI sharing consent</button>
   <p id="assistant-load" class="assistant-warning" hidden></p>
   <div id="assistant-thread" role="log" aria-live="polite" aria-relevant="additions text" aria-label="Conversation" tabindex="0"></div>
   <form id="assistant-form">
@@ -217,6 +226,24 @@
     <p id="assistant-check" class="chat-check" role="status" aria-live="polite"></p>
     <div class="chat-foot"><p id="assistant-keyboard-help" class="assistant-keyboard-help">Enter to send · Shift+Enter for a new line</p><button id="assistant-retry" type="button" class="chat-link">Check Connection</button></div>
   </form>
+</div></dialog>
+
+<dialog id="ai-consent-dialog" class="privacy-dialog" aria-labelledby="ai-consent-title" aria-describedby="ai-consent-summary"><div class="dialog-body">
+  <div class="release-heading"><h2 id="ai-consent-title">Allow hosted AI sharing?</h2><button id="ai-consent-close" type="button" aria-label="Close AI sharing consent">Close</button></div>
+  <p id="ai-consent-summary">Selected provider: <strong id="ai-consent-provider"></strong>. This service receives data over the internet.</p>
+  <ul><li>Your questions, recent chat context, working hours and calendar results requested by the model may be sent, including event titles, descriptions, locations and meeting links.</li>
+  <li>Calendar information can identify other people or contain sensitive personal information. Share only information you are authorized to send.</li>
+  <li>The provider may process data outside the Philippines and retain it under its own terms. Data use, including any human review or model training, depends on your provider and account settings. A connection test sends a short test message and your API credential, without calendar results.</li>
+  <li>This choice is optional and separate from using the local calendar. Withdraw through AI sharing consent at any time; already sent data cannot be recalled.</li></ul>
+  <p><a id="ai-consent-provider-policy" target="_blank" rel="noopener noreferrer">Provider API data policy</a> · <a href="/privacy.html" target="_blank" rel="noopener noreferrer">Privacy Policy</a> · <a href="/terms.html" target="_blank" rel="noopener noreferrer">Terms of Use</a></p>
+  <label><input id="ai-consent-ack" type="checkbox"> I allow the selected provider to process this information for calendar assistance.</label>
+  <p id="ai-consent-revision" class="privacy-hint"></p><p id="ai-consent-storage" class="privacy-hint" role="status"></p>
+  <div class="privacy-actions"><button id="ai-consent-decline" type="button">Not now</button><button id="ai-consent-allow" type="button" class="primary" disabled>Allow sharing</button></div>
+</div></dialog>
+<dialog id="release-notes-dialog" class="privacy-dialog" aria-labelledby="release-notes-title"><div class="dialog-body">
+  <div class="release-heading"><h2 id="release-notes-title">What’s new in CalendarViewer</h2><button id="release-notes-close" type="button">Close</button></div>
+  <p id="release-notes-version" class="privacy-hint"></p><div id="release-notes-content"></div>
+  <p><a href="https://github.com/ScutiApplications/CalendarViewer/releases" target="_blank" rel="noopener noreferrer">Published release history</a></p>
 </div></dialog>
 
 <script src="/js/core.js"></script>
@@ -237,12 +264,14 @@
 <script src="/js/alert-delivery.js"></script>
 <script src="/js/sidebar-settings.js"></script>
 <script src="/js/updates-ui.js"></script>
+<script src="/js/release-notes-ui.js"></script>
 <script src="/js/sources-ui.js"></script>
 <script src="/js/feeds.js"></script>
 <script src="/js/refresh-controls.js"></script>
 <script src="/js/theme.js"></script>
 <script src="/js/add-calendar.js"></script>
 <script src="/js/backup-glue.js"></script>
+<script src="/js/privacy-ui.js"></script>
 <script src="/js/assistant-ui.js"></script>
 <script src="/js/assistant-settings.js"></script>
 <script src="/js/dialog-backdrop.js"></script>
