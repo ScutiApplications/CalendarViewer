@@ -1,0 +1,9 @@
+[project]
+name = "calendar-viewer-tools"
+version = "0.0.0"
+description = "Release tooling for ICS Calendar Viewer (the app itself is Node and needs no Python)."
+requires-python = ">=3.10"
+dependencies = []
+
+[tool.uv]
+package = false
