@@ -56,11 +56,10 @@ function eventStatus(event, canceled) {
 function eventWhenText(event) {
   const day = event.start.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
   if (event.allDay) return day + ', all day';
-  const clock = { hour: 'numeric', minute: '2-digit' };
   const end = event.end || new Date(eventFinishTime(event));
   const sameDay = end.toDateString() === event.start.toDateString();
-  const endText = sameDay ? end.toLocaleTimeString([], clock) : end.toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', ...clock });
-  return day + ', ' + event.start.toLocaleTimeString([], clock) + ' – ' + endText;
+  const endText = sameDay ? end.toLocaleTimeString([], CLOCK) : end.toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', ...CLOCK });
+  return day + ', ' + event.start.toLocaleTimeString([], CLOCK) + ' – ' + endText;
 }
 
 // Hidden text on a card so assistants that read the page text see the time, place and calendars, not just the title.

@@ -7,6 +7,7 @@ const { findFreeTime, workingShift } = require('../shared/free-time');
 const { DAY_MS, WEEK_MS } = logic;
 const MAX_SPAN_MS = 93 * DAY_MS;
 const MAX_EVENTS = 200;
+const READ_ONLY = { readOnlyHint: true };
 const fail = message => { throw Object.assign(new Error(message), { tool: true }); };
 
 const RANGE = {
@@ -22,7 +23,7 @@ const TOOLS = [
   { name: 'up_next', description: 'The next upcoming events within 7 days, soonest first.',
     inputSchema: { type: 'object', properties: { limit: { type: 'integer', minimum: 1, maximum: 20, description: 'Default 3.' } } } },
   { name: 'conflicts', description: 'Timed events that overlap another event in a date range.', inputSchema: { type: 'object', properties: RANGE } }
-].map(tool => ({ ...tool, annotations: { readOnlyHint: true } }));
+].map(tool => ({ ...tool, annotations: READ_ONLY }));
 
 // Merged busy intervals inside [from, to), so overlapping events are not counted twice.
 function busyIntervals(events, from, to) {
@@ -175,7 +176,6 @@ function createCalendarTools({ sources, now = Date.now }) {
   }
   return { execute, definitions: ASSISTANT_TOOLS };
 }
-const READ_ONLY = { readOnlyHint: true };
 const DAY = { start: { type: 'string', description: 'ISO date or today, tomorrow, thursday. Default today.' } };
 const ASSISTANT_TOOLS = [...TOOLS,
   { name: 'get_working_hours', description: 'The working hours (shift) of the user: start, end and length per day. Use for questions about shift, work hours or how long they work.', inputSchema: { type: 'object', properties: { work_start: { type: 'string' }, work_end: { type: 'string' } } }, annotations: READ_ONLY },
@@ -186,5 +186,5 @@ const ASSISTANT_TOOLS = [...TOOLS,
   { name: 'search_events', description: 'Find events by title or location over a wide range (default 30 days back to 60 ahead).', inputSchema: { type: 'object', properties: { query: { type: 'string' }, ...RANGE }, required: ['query'] }, annotations: READ_ONLY },
   { name: 'list_all_day', description: 'All-day events only (holidays, leave, day-long blocks) in a range.', inputSchema: { type: 'object', properties: RANGE }, annotations: READ_ONLY },
   { name: 'recurring_summary', description: 'Upcoming occurrences of events matching a title, grouped per series, to tell how often they repeat.', inputSchema: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'] }, annotations: READ_ONLY },
-  { name: 'find_free_time', description: 'Find available time, computed by code. Default weekdays 09:00–17:00; range may be today, thursday, this week, next week or ISO dates. Ends are exclusive.', inputSchema: { type: 'object', properties: { ...RANGE, minutes: { type: 'integer' }, work_start: { type: 'string' }, work_end: { type: 'string' } }, required: ['minutes'] }, annotations: { readOnlyHint: true } }];
+  { name: 'find_free_time', description: 'Find available time, computed by code. Default weekdays 09:00–17:00; range may be today, thursday, this week, next week or ISO dates. Ends are exclusive.', inputSchema: { type: 'object', properties: { ...RANGE, minutes: { type: 'integer' }, work_start: { type: 'string' }, work_end: { type: 'string' } }, required: ['minutes'] }, annotations: READ_ONLY }];
 module.exports = { createCalendarTools, TOOLS };

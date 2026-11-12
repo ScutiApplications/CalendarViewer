@@ -29,7 +29,7 @@ data/               your feeds and alert state, and the built-in model under dat
 ## Requirements
 
 - Windows with Node.js 18 or newer on PATH. A currently supported Node.js LTS release is recommended.
-- A browser; an internet connection is needed only for remote calendar feeds and links you open.
+- A browser; an internet connection is needed for remote calendar feeds, links you open, assistant downloads and hosted assistant providers. Once downloaded, the built-in assistant runs offline.
 - Python 3.10 or newer (run through `uv`) only if you want to create a distribution ZIP.
 
 No dependency installation or build step is required.
