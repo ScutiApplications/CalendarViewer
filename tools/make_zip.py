@@ -2,7 +2,7 @@
 """Create a portable source ZIP from the files git tracks or would track.
 
 Uses `git ls-files`, so every .gitignore rule is honored. tools/ (maintainer
-scripts), docs/ (design notes) and older zips are left out.
+scripts) and older zips are left out.
 Output: dist/<name>-<VERSION>.zip (dist/ is gitignored).
 """
 
@@ -24,7 +24,7 @@ def included_files():
         sys.exit(result.stderr)
     return [
         line for line in result.stdout.splitlines()
-        if line and not line.startswith(("tools/", "docs/")) and not line.endswith(".zip")
+        if line and not line.startswith("tools/") and not line.endswith(".zip")
     ]
 
 
