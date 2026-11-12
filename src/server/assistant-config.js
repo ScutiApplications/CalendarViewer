@@ -1,4 +1,4 @@
-// Settings come from the web UI (data/assistant-config.json, mode 0600); environment variables override them.
+// Runtime settings are unlocked by assistant-settings-store; disk keys are DPAPI envelopes. Environment variables override them.
 // provider: llamacpp (MiniCPM5-2B run by a llama.cpp server program the app downloads itself) or a hosted provider
 // (anthropic, openai, gemini) with an API key. Hosted providers never fall back to local models.
 const { PROVIDERS } = require('./providers');
@@ -19,7 +19,7 @@ const modelFor = (config, name) => {
 };
 function assistantConfig(config = {}, env = process.env) {
   const provider = env.ASSISTANT_PROVIDER || config.provider || 'llamacpp';
-  if (!(provider in PROVIDERS)) throw new Error('Provider must be llamacpp, anthropic, openai or gemini.');
+  if (!Object.hasOwn(PROVIDERS, provider)) throw new Error('Provider must be llamacpp, anthropic, openai or gemini.');
   const enabled = env.CALENDAR_ASSISTANT_ENABLED === undefined ? config.enabled === true : env.CALENDAR_ASSISTANT_ENABLED === '1';
   const fallback = ''; // Legacy response field; old saved fallback preferences no longer enable local inference.
   const cpuThreads = cpuThreadsFor(config.cpuThreads);

@@ -138,6 +138,12 @@ The interface follows your system's light/dark preference unless you pick Light 
 
 ## Privacy
 
+**Saved API keys:** Windows installations use DPAPI encryption bound to the Windows account running CalendarViewer. Keys are decrypted only in memory and passed to the selected provider over HTTPS. No separate encryption-key file or manual environment variable is required on Windows. Startup migrates existing plaintext key records atomically; failures are shown in assistant settings and preserve the original file. Unreadable encrypted keys can be replaced or removed there. Non-key settings are still readable JSON. Moving the app to another PC/account, or reverting to an older version without DPAPI support, may require re-entering API keys. Keep your original Windows profile available if you need to recover encrypted keys.
+
+There is no plaintext fallback: saving API keys on non-Windows systems is refused; existing environment-managed keys still work and are not written to disk. Encryption protects stored key files, not malware running under your account or key contents in process memory. Calendar links, event data, exported backups and any pre-existing backup copies are not encrypted or rewritten by this feature.
+
+The calendar starts while keys unlock in the background; assistant actions wait and show their loading state. If multiple saved keys are unavailable, **Remove all unavailable saved keys** clears them in one operation while keeping working keys. Individual unavailable encrypted keys can also be replaced or removed. Downgrading does not decrypt keys into plaintext; older releases cannot unlock the new records.
+
 Settings links to local **Privacy Policy**, **Terms of Use** (T&C/TOS combined), and **Cookies & Local Storage** pages. These describe the standard local app for a Philippine audience under the developer name ScutiApplications. They do not assert a registered company or certify compliance. The repository is the interim contact; no dedicated private privacy email is published. A hosted/organizational deployment must supply accurate responsible-party and contact information for its own processing.
 
 No analytics or advertising cookies are included, so this version has no blanket cookie banner. Browser storage supports calendars, preferences, reminders, per-provider sharing choices and release-note history. Notices accompany calendar imports; see the policy pages for retention and local removal instructions.

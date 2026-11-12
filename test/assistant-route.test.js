@@ -90,7 +90,13 @@ test('real server wiring protects routes, defaults to the built-in model and rep
     req.on('error', reject); req.end(body);
   });
   for (const headers of [{ Host: 'evil.example' }, { Origin: 'https://evil.example' }, { 'X-Calendar-Action': '' }]) assert.equal((await request('/api/assistant/status', 'GET', undefined, headers)).status, 403);
-  const status = JSON.parse((await request('/api/assistant/status')).text);
+  let status;
+  for (let attempt = 0; attempt < 100; attempt++) {
+    status = JSON.parse((await request('/api/assistant/status')).text);
+    if (!status.initializing) break;
+    await new Promise(resolve => setTimeout(resolve, 10));
+  }
+  assert.equal(status.initializing, undefined);
   assert.deepEqual([status.provider, status.reachable], ['llamacpp', false]);
   const stream = await request('/api/assistant', 'POST', JSON.stringify({ question: 'What is on my plate Thursday?' }));
   assert.equal(stream.status, 200); assert.match(stream.text, /"type":"error"/);
@@ -285,4 +291,41 @@ test('saving a hosted provider does not grant consent for its probe or questions
   }
   assert.equal(probes, 0);
   assert.equal((await request('/api/assistant', { method: 'POST', body: '{"question":"hello"}' })).status, 403);
+});
+
+test('async persistence finishes before settings apply and concurrent saves are refused', async t => {
+  let entered, finish;
+  const started = new Promise(resolve => { entered = resolve; }), gate = new Promise(resolve => { finish = resolve; });
+  const saved = {};
+  const { request } = await fixture(t, false, undefined, { route: { saved, env: {}, persist: async () => { entered(); await gate; } } });
+  const pending = request('/api/assistant/config', { method: 'PUT', body: '{"enabled":true,"provider":"openai","token":"fixture-value"}' });
+  await started;
+  const before = await (await request('/api/assistant/config')).json();
+  assert.equal(before.provider, 'llamacpp'); assert.equal(saved.provider, undefined);
+  assert.equal((await request('/api/assistant/config', { method: 'PUT', body: '{"provider":"gemini"}' })).status, 409);
+  finish();
+  assert.equal((await pending).status, 200); assert.equal(saved.provider, 'openai');
+});
+
+test('rejected persistence leaves runtime settings unchanged and does not expose diagnostics', async t => {
+  const { request } = await fixture(t, false, undefined, { route: { env: {}, persist: async () => { throw new Error('private-input'); } } });
+  const response = await request('/api/assistant/config', { method: 'PUT', body: '{"provider":"openai","token":"fixture-value"}' });
+  assert.equal(response.status, 500); assert.doesNotMatch(await response.text(), /private-input|fixture-value/);
+  assert.equal((await (await request('/api/assistant/config')).json()).provider, 'llamacpp');
+});
+
+test('calendar-side readiness can precede credential initialization without allowing assistant actions', async t => {
+  const { request } = await fixture(t, true, undefined, { route: { initializing: () => true } });
+  const view = await (await request('/api/assistant/config')).json();
+  assert.equal(view.initializing, true); assert.equal(view.enabled, false);
+  assert.equal((await request('/api/assistant/test', { method: 'POST', body: '{}' })).status, 503);
+  assert.equal((await request('/api/assistant/config', { method: 'PUT', body: '{}' })).status, 503);
+  assert.equal((await request('/api/assistant', { method: 'POST', body: '{"question":"hello"}' })).status, 503);
+});
+
+test('one explicit recovery action removes unavailable keys and keeps working keys', async t => {
+  const saved = { provider: 'llamacpp', keys: { openai: { type: 'unavailable-legacy' }, gemini: { type: 'unavailable-legacy' }, anthropic: 'working-fixture' } };
+  const { request } = await fixture(t, true, undefined, { route: { saved, env: {} } });
+  const response = await request('/api/assistant/config', { method: 'PUT', body: '{"clearUnavailableKeys":true}' });
+  assert.equal(response.status, 200); assert.deepEqual(saved.keys, { anthropic: 'working-fixture' });
 });

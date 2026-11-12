@@ -187,7 +187,9 @@
       </select></div>
       <div id="assistant-token-row">
         <label for="assistant-token">API key</label>
-        <input type="password" id="assistant-token" autocomplete="off" spellcheck="false" aria-describedby="assistant-token-state"><div class="assistant-token-meta"><small id="assistant-token-state"></small><button id="assistant-token-clear" type="button" hidden>Remove saved key</button></div>
+        <input type="password" id="assistant-token" autocomplete="off" spellcheck="false" aria-describedby="assistant-token-state assistant-key-storage"><div class="assistant-token-meta"><small id="assistant-token-state"></small><button id="assistant-token-clear" type="button" hidden>Remove saved key</button></div>
+        <p id="assistant-key-storage" class="privacy-hint" role="status"></p>
+        <button id="assistant-clear-unavailable-keys" type="button" hidden>Remove all unavailable saved keys</button>
       </div>
       <div id="assistant-model-row" hidden>
         <label for="assistant-model">Model name</label>

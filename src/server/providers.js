@@ -12,7 +12,7 @@ const PROVIDERS = {
   gemini: { label: 'Google Gemini', model: 'gemini-3.8-flash', origin: 'https://generativelanguage.googleapis.com', env: 'GEMINI_API_KEY' }
 };
 // Providers reached over the internet with an API key (everything except the built-in model).
-const isHosted = provider => provider !== 'llamacpp' && provider in PROVIDERS;
+const isHosted = provider => provider !== 'llamacpp' && Object.hasOwn(PROVIDERS, provider);
 const needsKey = provider => !!PROVIDERS[provider]?.env;
 
 const parseArgs = value => {

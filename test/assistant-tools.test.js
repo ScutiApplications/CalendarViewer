@@ -42,6 +42,16 @@ test('shared tools validate flat arguments and expose assistant-only availabilit
   }
 });
 
+test('tool dispatch and argument schemas reject prototype names before accessing calendars', async () => {
+  let reads = 0;
+  const tools = createCalendarTools({ sources: async () => { reads++; return []; } });
+  for (const name of ['constructor', '__proto__', 'valueOf', 'hasOwnProperty', '__defineSetter__']) await assert.rejects(tools.execute(name, {}), /Unknown tool/);
+  for (const key of ['constructor', '__proto__', 'toString']) {
+    await assert.rejects(tools.execute('list_events', JSON.parse('{"' + key + '":"x"}')), /Invalid argument/);
+  }
+  assert.equal(reads, 0);
+});
+
 test('shared ranges exclude touching boundaries and cancelled titles', async () => {
   const events = [
     ['before', 'Before', '20261104T230000Z', '20261105T000000Z'],

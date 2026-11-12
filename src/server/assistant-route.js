@@ -17,30 +17,34 @@ function cleanHours(value) {
   const time = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
   return value && time.test(value.start) && time.test(value.end) && value.start !== value.end ? { start: value.start, end: value.end } : undefined;
 }
-function createAssistantRoute({ config, client, assistant, refuseUnlessLocalAction, saved = {}, persist = () => {}, env = process.env, createClient = createModelClient, engine = null }) {
-  let busy = false, lastStatus = { reachable: false, model: null }, activeController = null;
+function createAssistantRoute({ config, client, assistant, refuseUnlessLocalAction, saved = {}, persist = () => {}, env = process.env, createClient = createModelClient, engine = null, keyStorage = null, initializing = () => false }) {
+  let busy = false, saving = false, lastStatus = { reachable: false, model: null }, activeController = null;
   // The token is write-only: it is never sent to the browser.
   const hostedNames = Object.keys(PROVIDERS).filter(isHosted);
   // Whether a credential exists for each provider (saved or from the environment), without revealing it.
-  const credentialSet = name => needsKey(name) && !!(env[PROVIDERS[name].env] || saved.keys?.[name]);
+  const credentialSet = name => needsKey(name) && !!(env[PROVIDERS[name].env] || (typeof saved.keys?.[name] === 'string' && saved.keys[name]));
+  const storedKeySet = name => needsKey(name) && !!(env[PROVIDERS[name].env] || saved.keys?.[name]);
   const view = () => ({
+    initializing: initializing(),
     cpuThreads: config.cpuThreads ?? 0,
     maxCpuThreads: cpuThreadLimit(),
     enabled: config.enabled, fallback: config.fallback || '', provider: config.provider, model: config.model, tokenSet: !!config.token,
-    tokenSets: Object.fromEntries(Object.keys(PROVIDERS).map(name => [name, credentialSet(name)])),
+    tokenSets: Object.fromEntries(Object.keys(PROVIDERS).map(name => [name, storedKeySet(name)])),
     models: Object.fromEntries(hostedNames.map(name => [name, saved.models?.[name] || PROVIDERS[name].model])),
     labels: Object.fromEntries(Object.entries(PROVIDERS).map(([name, info]) => [name, info.label])),
-    locked: assistantLocks(env, config.provider)
+    locked: assistantLocks(env, config.provider),
+    ...(keyStorage ? { keyStorage: keyStorage() } : {})
   });
   // Applies a settings request to a copy of the saved settings. A blank credential clears only when saving.
   function merge(body, clearOnEmpty) {
     const next = { ...saved };
+    if (body.clearUnavailableKeys === true) next.keys = Object.fromEntries(Object.entries(saved.keys || {}).filter(([, value]) => typeof value === 'string'));
     if (typeof body.enabled === 'boolean') next.enabled = body.enabled;
     if (body.cpuThreads !== undefined) next.cpuThreads = body.cpuThreads;
     if (typeof body.provider === 'string' && body.provider) next.provider = body.provider;
     const provider = next.provider || 'llamacpp';
     if (typeof body.token === 'string' && needsKey(provider)) {
-      next.keys = { ...saved.keys };
+      next.keys = { ...next.keys };
       if (body.token) next.keys[provider] = body.token; else if (clearOnEmpty) delete next.keys[provider];
     }
     if (typeof body.model === 'string' && isHosted(provider)) {
@@ -91,21 +95,25 @@ function createAssistantRoute({ config, client, assistant, refuseUnlessLocalActi
     if (!body) return;
     return applySettings(body, res);
   }
-  function applySettings(body, res) {
-    const next = merge(body, true);
-    let applied;
-    try { applied = assistantConfig(next, env); } catch (e) { return send(res, 400, e.message); }
-    try { persist(next); } catch { return send(res, 500, 'Could not save assistant settings.'); }
-    for (const key of Object.keys(saved)) delete saved[key];
-    Object.assign(saved, next);
-    const providerChanged = config.provider !== applied.provider;
-    if (providerChanged) activeController?.abort();
-    Object.assign(config, applied);
-    engine?.configure?.({ cpuThreads: applied.cpuThreads });
-    if (providerChanged || applied.provider !== 'llamacpp') engine?.stop?.();
-    client.configure?.({ provider: applied.provider, model: applied.model, url: applied.url, token: applied.token, fallback: applied.fallback });
-    lastStatus = { reachable: false, model: null };
-    return sendJson(res, 200, view());
+  async function applySettings(body, res) {
+    if (saving) return send(res, 409, 'Assistant settings are being saved. Try again.');
+    saving = true;
+    try {
+      const next = merge(body, true);
+      let applied;
+      try { applied = assistantConfig(next, env); } catch (e) { return send(res, 400, e.message); }
+      try { await persist(next); } catch { return send(res, 500, 'Could not save assistant settings. Encrypted storage did not complete; current settings were kept.'); }
+      for (const key of Object.keys(saved)) delete saved[key];
+      Object.assign(saved, next);
+      const providerChanged = config.provider !== applied.provider;
+      if (providerChanged) activeController?.abort();
+      Object.assign(config, applied);
+      engine?.configure?.({ cpuThreads: applied.cpuThreads });
+      if (providerChanged || applied.provider !== 'llamacpp') engine?.stop?.();
+      client.configure?.({ provider: applied.provider, model: applied.model, url: applied.url, token: applied.token, fallback: applied.fallback });
+      lastStatus = { reachable: false, model: null };
+      return sendJson(res, 200, view());
+    } finally { saving = false; }
   }
   // Which providers are set up: a key for hosted ones, a downloaded model for the built-in one.
   const HINTS = { llamacpp: 'Download the model in the assistant settings.' };
@@ -122,7 +130,7 @@ function createAssistantRoute({ config, client, assistant, refuseUnlessLocalActi
     const body = await readJson(req, res, 1024, 'Send a JSON object with a provider name.');
     if (!body) return;
     const name = body.provider;
-    if (typeof name !== 'string' || !(name in PROVIDERS)) return send(res, 400, 'Send a JSON object with a provider name.');
+    if (typeof name !== 'string' || !Object.hasOwn(PROVIDERS, name)) return send(res, 400, 'Send a JSON object with a provider name.');
     if (assistantLocks(env, config.provider).provider) return send(res, 409, 'The provider is fixed by the server environment.');
     if (name !== config.provider && !(await availability())[name]) return send(res, 409, 'That provider is not set up yet. Set it up in the assistant settings.');
     return applySettings({ provider: name }, res);
@@ -130,6 +138,10 @@ function createAssistantRoute({ config, client, assistant, refuseUnlessLocalActi
   async function handle(req, res) {
     if (refuseUnlessLocalAction(req, res)) return;
     const route = req.url.split('?')[0];
+    if (initializing()) {
+      if (req.method === 'GET' && (route === '/api/assistant/config' || route === '/api/assistant/status')) return sendJson(res, 200, { ...view(), enabled: false, reachable: false });
+      return send(res, 503, 'Assistant settings are being unlocked. Try again shortly.');
+    }
     if (route.startsWith('/api/assistant/builtin') && config.provider !== 'llamacpp') return send(res, 403, 'Select the built-in provider to download or use local models.');
     if (route === '/api/assistant/config') {
       if (req.method === 'GET') return sendJson(res, 200, view());

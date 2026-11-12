@@ -14,6 +14,7 @@ const { createBackupService } = require('./backups');
 const { createMcpHandler } = require('./mcp');
 const { createCalendarTools } = require('./calendar-tools');
 const { assistantConfig, savedSettings } = require('./assistant-config');
+const { createAssistantSettingsStore } = require('./assistant-settings-store');
 const { createModelClient } = require('./model-client');
 const { createAssistant } = require('./assistant');
 const { createLayaRouter } = require('./tool-router');
@@ -68,7 +69,9 @@ const refuseUnlessLocalAction = (req, res) => !isLocalAction(req) && (send(res, 
 
 // Invalid optional settings disable only the assistant, leaving the calendar operational.
 const ASSISTANT_FILE = path.join(DATA_DIR, 'assistant-config.json');
-const savedAssistant = savedSettings(readJson(ASSISTANT_FILE, {}));
+const assistantSettings = createAssistantSettingsStore({ file: ASSISTANT_FILE });
+const savedAssistant = {};
+let assistantInitializing = true;
 let modelConfig;
 try { modelConfig = assistantConfig(savedAssistant); }
 catch { modelConfig = { enabled: false, provider: 'llamacpp', url: '' }; console.warn('Assistant disabled: invalid model configuration.'); }
@@ -79,7 +82,8 @@ const llamaEngine = createBuiltinModels({ minicpm, laya, selected: () => modelCo
 const modelClient = createModelClient({ ...modelConfig, engine: llamaEngine });
 const toolRouter = createLayaRouter({ engine: laya, enabled: () => modelConfig.provider === 'llamacpp' });
 const assistant = createAssistant({ client: modelClient, tools: createCalendarTools({ sources: alerts.sources }), router: toolRouter });
-const assistantRoute = createAssistantRoute({ config: modelConfig, client: modelClient, engine: llamaEngine, assistant, refuseUnlessLocalAction, saved: savedAssistant, persist: value => writeJsonAtomic(ASSISTANT_FILE, value, { space: 2, mode: 0o600 }) });
+const assistantRoute = createAssistantRoute({ config: modelConfig, client: modelClient, engine: llamaEngine, assistant, refuseUnlessLocalAction,
+  saved: savedAssistant, persist: value => assistantSettings.save(value), keyStorage: () => assistantSettings.status(), initializing: () => assistantInitializing });
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost');
@@ -193,13 +197,24 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
+async function initializeAssistant() {
+  // Only assistant actions wait for credentials; calendar readiness must fit the launcher's short deadline.
+  try {
+    try { Object.assign(savedAssistant, savedSettings(await assistantSettings.load())); }
+    catch { console.warn('Assistant settings unavailable. Original settings file was not changed.'); }
+    try { Object.assign(modelConfig, assistantConfig(savedAssistant)); }
+    catch { Object.assign(modelConfig, { enabled: false, provider: 'llamacpp', url: '', token: '', cpuThreads: 0 }); }
+    modelClient.configure(modelConfig);
+    llamaEngine.configure({ cpuThreads: modelConfig.cpuThreads ?? 0 });
+  } finally { assistantInitializing = false; }
+}
+void initializeAssistant().catch(() => { console.warn('Assistant initialization did not complete. Calendar remains available.'); });
 server.listen(PORT, '127.0.0.1', () => {
   console.log(`ICS viewer: http://localhost:${PORT}`);
   alerts.start();
 });
 
-// On SIGTERM or SIGINT: every state file is written atomically and synchronously, so nothing needs flushing:
-// stop the alert timer, finish in-flight requests, then exit.
+// Stop alerts and finish in-flight requests, including encrypted settings writes, before exiting.
 function shutdown() {
   alerts.stop();
   llamaEngine.stop();

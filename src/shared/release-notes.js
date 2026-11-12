@@ -1,6 +1,12 @@
 // Keep entries paired with published VERSION values. Content is rendered as text, never HTML.
 (function (root) {
   const releases = [
+    { version: '1.0.6', changes: [
+      'Saved API keys use Windows DPAPI encryption tied to the Windows account running CalendarViewer. Existing plaintext keys migrate on startup.',
+      'Calendar starts while keys unlock; assistant settings show progress and recovery options for unavailable keys.',
+      'Hardened calendar-tool dispatch and argument validation, provider validation, download fixture URL checks and workflow permissions.',
+      'Encrypted keys may need re-entering after moving to another PC or Windows account. Calendar data and old backup copies are not encrypted by this feature.'
+    ] },
     { version: '1.0.5', changes: [
       'Read the Philippines-focused Privacy Policy, Terms of Use and Cookies & Local Storage pages from Settings.',
       'Choose hosted-AI sharing separately for each provider; withdraw consent from Settings or chat. Built-in models remain local.',

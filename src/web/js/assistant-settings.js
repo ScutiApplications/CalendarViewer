@@ -4,6 +4,11 @@ const assistantStaleServer = response => response.status === 404 ? 'The calendar
 function initAssistantSettings() {
   const form = document.getElementById('assistant-settings-form');
   if (!form) return;
+  const loadingControls = Array.from(form.querySelectorAll?.('input, select, button') || [], control => [control, control.disabled]);
+  const loadingSettings = active => {
+    form.ariaBusy = String(active);
+    for (const [control, disabled] of loadingControls) control.disabled = active || disabled;
+  };
   const enabled = document.getElementById('assistant-enabled');
   const provider = document.getElementById('assistant-provider');
   const model = document.getElementById('assistant-model');
@@ -17,6 +22,7 @@ function initAssistantSettings() {
   const cpuThreads = document.getElementById('assistant-cpu-threads');
   const token = document.getElementById('assistant-token');
   const clear = document.getElementById('assistant-token-clear');
+  const clearUnavailable = document.getElementById('assistant-clear-unavailable-keys');
   const state = document.getElementById('assistant-settings-state');
   const testButton = document.getElementById('assistant-test');
   const settingsDialog = document.getElementById('assistant-settings-dialog');
@@ -49,11 +55,15 @@ function initAssistantSettings() {
     tokenRow.hidden = builtin;
     checkLocal();
     const set = !!current.tokenSets[name], locked = !!current.locked.tokens[name];
+    const keyError = current.keyStorage?.errors?.[name];
     token.disabled = locked; token.value = '';
-    token.placeholder = set ? 'Saved. Leave blank to keep it.' : '';
+    token.placeholder = keyError ? 'Saved key unavailable. Enter a replacement.' : set ? 'Saved. Leave blank to keep it.' : '';
     clear.hidden = !set || locked;
     const tokenState = document.getElementById('assistant-token-state');
-    tokenState.textContent = locked ? 'Key managed by the server environment.' : set ? 'Key saved. Leave blank to keep it.' : 'No key saved.';
+    tokenState.textContent = locked ? 'Key managed by the server environment.' : keyError || (set ? 'Key saved. Leave blank to keep it.' : 'No key saved.');
+    const protection = document.getElementById('assistant-key-storage');
+    if (protection) protection.textContent = current.keyStorage?.message || '';
+    if (clearUnavailable) clearUnavailable.hidden = Object.keys(current.keyStorage?.errors || {}).length < 2;
     if (keyed) model.value = current.models[name] || '';
     showConsent();
   }
@@ -149,6 +159,17 @@ function initAssistantSettings() {
     finally { release(); testButton.disabled = false; showConsent(); }
   };
   clear.onclick = () => send({ provider: provider.value, token: '' }, 'Removed.');
-  fetch('/api/assistant/config', { headers }).then(r => r.ok ? r.json() : Promise.reject()).then(data => { state.textContent = show(data); }).catch(() => { state.textContent = 'Settings unavailable: calendar server unreachable.'; });
+  if (clearUnavailable) clearUnavailable.onclick = () => send({ clearUnavailableKeys: true }, 'Unavailable saved keys removed. Working keys were kept.');
+  async function loadSettings() {
+    loadingSettings(true);
+    try {
+      const response = await fetch('/api/assistant/config', { headers });
+      if (!response.ok) throw new Error('unavailable');
+      const data = await response.json();
+      if (data.initializing) { state.textContent = 'Unlocking saved API keys… Calendar remains available.'; setTimeout(loadSettings, 500); return; }
+      loadingSettings(false); state.textContent = show(data);
+    } catch { loadingSettings(false); state.textContent = 'Settings unavailable: calendar server unreachable.'; }
+  }
+  void loadSettings();
 }
 initAssistantSettings();

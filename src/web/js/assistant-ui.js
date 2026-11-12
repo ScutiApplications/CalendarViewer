@@ -35,6 +35,10 @@ function initAssistantUI() {
       const response = await fetch('/api/assistant/status', { headers });
       if (!response.ok) throw new Error('status');
       const data = await response.json();
+      if (data.initializing) {
+        reachable = false; send.disabled = true; state.textContent = 'Unlocking saved API keys…';
+        setTimeout(status, 500); return;
+      }
       if (currentProvider && currentProvider !== data.provider) { active?.abort(); resetChat('Provider changed. Previous chat cleared.'); }
       currentProvider = data.provider;
       if (sharing) sharing.hidden = data.provider === 'llamacpp';

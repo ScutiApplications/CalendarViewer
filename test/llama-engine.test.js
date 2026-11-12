@@ -53,17 +53,25 @@ function downloadFixture({ badModelSha = false, badGpuSha = false } = {}) {
   const seen = [];
   const fetch = async url => {
     seen.push(url);
-    if (url.includes('api.github.com')) return new Response(JSON.stringify({ assets: [
+    const parsed = new URL(url);
+    if (parsed.origin === 'https://api.github.com') return new Response(JSON.stringify({ assets: [
       { name: asset, digest: 'sha256:' + sha(zip), browser_download_url: assetUrl },
       { name: gpuAsset, digest: 'sha256:' + sha(badGpuSha ? 'other' : zip), browser_download_url: gpuUrl }
     ] }));
     if (url === assetUrl || url === gpuUrl) return new Response(zip);
-    if (url.includes('huggingface.co/api')) return new Response(JSON.stringify([{ path: 'MiniCPM5-2B-Q4_K_M.gguf', lfs: { oid: badModelSha ? sha('other') : sha(model) } }]));
-    if (url.includes('huggingface.co/openbmb')) return new Response(model);
+    if (parsed.origin === 'https://huggingface.co' && parsed.pathname.startsWith('/api/')) return new Response(JSON.stringify([{ path: 'MiniCPM5-2B-Q4_K_M.gguf', lfs: { oid: badModelSha ? sha('other') : sha(model) } }]));
+    if (parsed.origin === 'https://huggingface.co' && parsed.pathname.startsWith('/openbmb/')) return new Response(model);
     return new Response('?', { status: 404 });
   };
   return { fetch, seen, model };
 }
+
+test('download fixture does not mistake URL substrings for trusted origins', async () => {
+  const { fetch } = downloadFixture();
+  for (const url of ['https://api.github.com.attacker.example/', 'https://attacker.example/api.github.com', 'https://huggingface.co.attacker.example/api/model', 'https://attacker.example/huggingface.co/openbmb/']) {
+    assert.equal((await fetch(url)).status, 404);
+  }
+});
 test('download installs the program and the model after checking both checksums', async t => {
   const dir = temp(t), { fetch, seen, model } = downloadFixture();
   const engine = createLlamaEngine({ dir, fetch, platform: 'win32', arch: 'x64' });

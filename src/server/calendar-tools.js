@@ -59,7 +59,7 @@ function createCalendarTools({ sources, now = Date.now }) {
 
   const listed = (events, limit = MAX_EVENTS) => ({ total: events.length, events: events.slice(0, limit).map(summary) });
 
-  const handlers = {
+  const handlers = new Map(Object.entries({
     async list_calendars() {
       return (await sources()).map(s => ({ name: s.name, kind: s.alertKey.startsWith('f:') ? 'link' : 'imported', enabled: s.enabled, events: s.events.length }));
     },
@@ -145,7 +145,7 @@ function createCalendarTools({ sources, now = Date.now }) {
       const [from, to] = range(args);
       return merged(await sources(), from, to).filter(e => e.extendedProps.conflicts.length).slice(0, MAX_EVENTS).map(summary);
     }
-  };
+  }));
 
 
   async function execute(name, args = {}) {
@@ -153,6 +153,7 @@ function createCalendarTools({ sources, now = Date.now }) {
     if (!definition) fail('Unknown tool.');
     if (!args || typeof args !== 'object' || Array.isArray(args)) fail('arguments must be an object.');
     for (const [key, value] of Object.entries(args)) {
+      if (!Object.hasOwn(definition.inputSchema.properties, key)) fail('Invalid argument: ' + key);
       const schema = definition.inputSchema.properties[key];
       if (!schema || (schema.type === 'integer' ? !Number.isInteger(value) : typeof value !== schema.type)) fail('Invalid argument: ' + key);
       if (typeof value === 'string' && value.length > 2000) fail('Argument too long.');
@@ -172,7 +173,9 @@ function createCalendarTools({ sources, now = Date.now }) {
       return { timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, working_hours: `${hours.start || '09:00'}-${hours.end || '17:00'} on weekdays`, slots,
         ...(slots.length ? {} : { note: `No free time of ${args.minutes} minutes in this range, within those working hours and after the current time.` }) };
     }
-    return handlers[name](args);
+    const handler = handlers.get(name);
+    if (typeof handler !== 'function') fail('Unknown tool.');
+    return handler(args);
   }
   return { execute, definitions: ASSISTANT_TOOLS };
 }
