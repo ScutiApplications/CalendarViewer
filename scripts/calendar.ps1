@@ -31,6 +31,44 @@ function Get-CalendarServers {
     @(Get-CimInstance Win32_Process -Filter "Name = 'node.exe'" | Where-Object { $_.CommandLine -match $serverPattern })
 }
 
+# Stop the installer first so it cannot start another Python process during cleanup.
+# Windows virtual environments may run their managed base interpreter, so match both private locations.
+function Stop-LayaProcesses {
+    $dataPath = Join-Path $root 'data'
+    if ($env:CALENDAR_DATA_DIR) {
+        $dataPath = $env:CALENDAR_DATA_DIR
+        if (-not [IO.Path]::IsPathRooted($dataPath)) { $dataPath = Join-Path $root $dataPath }
+    }
+    $layaPath = Join-Path ([IO.Path]::GetFullPath($dataPath)) 'laya'
+    $installerPrefix = (Join-Path $layaPath 'bootstrap') + '\'
+    $runtimePrefix = (Join-Path $layaPath 'runtime') + '\'
+    $pythonPrefix = (Join-Path $layaPath 'python') + '\'
+    foreach ($processName in @('uv.exe', 'python.exe', 'pythonw.exe')) {
+        $owned = @(Get-CimInstance Win32_Process -Filter "Name = '$processName'" | Where-Object {
+            $executable = $_.ExecutablePath
+            $executable -and (
+                ($processName -eq 'uv.exe' -and $executable.StartsWith($installerPrefix, [StringComparison]::OrdinalIgnoreCase)) -or
+                ($processName -ne 'uv.exe' -and (
+                    $executable.StartsWith($runtimePrefix, [StringComparison]::OrdinalIgnoreCase) -or
+                    $executable.StartsWith($pythonPrefix, [StringComparison]::OrdinalIgnoreCase)
+                ))
+            )
+        })
+        foreach ($ownedProcess in $owned) {
+            try { Stop-Process -Id $ownedProcess.ProcessId -ErrorAction Stop }
+            catch {
+                # The server or installer may already have stopped this child.
+                if (Get-Process -Id $ownedProcess.ProcessId -ErrorAction SilentlyContinue) { throw }
+            }
+            Wait-Process -Id $ownedProcess.ProcessId -Timeout 10 -ErrorAction SilentlyContinue
+            if (Get-Process -Id $ownedProcess.ProcessId -ErrorAction SilentlyContinue) {
+                throw "Laya process $($ownedProcess.ProcessId) has not stopped yet."
+            }
+            Write-Host "Stopped Calendar Viewer Laya process: $processName ($($ownedProcess.ProcessId))."
+        }
+    }
+}
+
 function Restart-Calendar {
     $port = Get-CalendarPort
     $nodePath = (Get-Command node -ErrorAction Stop).Source
@@ -79,7 +117,6 @@ function Stop-Calendar {
     $servers = Get-CalendarServers
     if (-not $servers.Count) {
         Write-Host 'Calendar server is already stopped.'
-        return
     }
     foreach ($server in $servers) {
         Stop-Process -Id $server.ProcessId -ErrorAction Stop
@@ -92,7 +129,8 @@ function Stop-Calendar {
             throw "Calendar server process $($server.ProcessId) has not stopped yet."
         }
     }
-    Write-Host 'Calendar server stopped.'
+    if ($servers.Count) { Write-Host 'Calendar server stopped.' }
+    Stop-LayaProcesses
 }
 
 function Get-StartupShortcut {

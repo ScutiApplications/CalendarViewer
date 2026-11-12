@@ -43,7 +43,7 @@ Keep the application folder together: `run.bat` runs `scripts\calendar.ps1`.
 | --- | --- |
 | `run.bat` | Start the server if needed (restart it after an update) and open the calendar. Add `-NoBrowser` to skip the browser. |
 | `run.bat restart` | Always restart the server and open the calendar. |
-| `run.bat stop` | Stop this application's background server. |
+| `run.bat stop` | Stop this application's background server and private Laya Python/installer processes, including orphaned workers. |
 | `run.bat startup-on` | Start the server automatically at Windows sign-in. Add `-Browser` to open the calendar too. |
 | `run.bat startup-off` | Turn off automatic startup for your Windows account. |
 
@@ -69,7 +69,7 @@ Extract the entire application into a permanent folder, then double-click `run.b
 It starts the server in the background and opens <http://localhost:3000>. Closing the launcher or the browser does not stop the server.
 
 - Run `run.bat restart` to restart the server and reopen the calendar.
-- Run `run.bat stop` to stop this application's server.
+- Run `run.bat stop` to stop this application's server and private Laya Python/installer processes. It also cleans up orphaned Laya processes when the server is already stopped; other applications' Python processes are left running.
 - Alternatively, run `node src/server/server.js` in a terminal and use Ctrl+C to stop it. On a network that inspects HTTPS (corporate proxy), start it with `node --use-system-ca src/server/server.js` so downloads trust the Windows certificate store.
 
 The launcher deliberately avoids stopping processes they cannot identify as this application.
