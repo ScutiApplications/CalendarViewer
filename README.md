@@ -200,7 +200,7 @@ To use it from an MCP client, add an entry like this to the client's server conf
 2. The **release** GitHub Actions workflow runs the tests on Windows and Linux, builds `CalendarViewer-X.Y.Z.zip`, creates tag `vX.Y.Z` and uploads a draft release with generated notes.
 3. After checking GitHub's uploaded ZIP digest against the local SHA-256, the workflow publishes the release as latest. Failed tests prevent publication; a failed upload verification leaves a draft for investigation.
 
-The workflow uses GitHub's built-in token; no personal token or local GitHub CLI is required. You can retry from **Actions > release > Run workflow** on `main`. An existing published version is left alone, and a version tag pointing to another commit is rejected: increase `VERSION` for each new release. Changes to the release workflow or packager also run the workflow.
+The workflow uses GitHub's built-in token; no personal token or local GitHub CLI is required. You can retry from **Actions > release > Run workflow** on `main`. An existing published version is left alone. For unpublished versions, a version tag pointing to another commit is rejected: increase `VERSION` for each new release. Changes to the release workflow or packager also run the workflow.
 
 For manual packaging, `tools\make_zip.bat` builds the ZIP and opens GitHub's release page. Automated releases already attach the ZIP.
 
@@ -214,8 +214,8 @@ Double-click `tools\make_zip.bat`, or run:
 uv run tools/make_zip.py
 ```
 
-The archive is created at `dist/CalendarViewer-<VERSION>.zip` (the number comes from `VERSION`) and includes everything outside the exclusions below: the app, launchers, `scripts/`, the tests, and this README.
-The archive holds the files git tracks or would track, so everything in `.gitignore` is left out (`.env`, `data/`, `.ics` files, caches, dependencies, build output, older ZIPs). `tools/` (release tooling) is excluded.
+The archive is created at `dist/CalendarViewer-<VERSION>.zip` from committed `HEAD`, with one `CalendarViewer/` folder. It includes `src/`, `scripts/`, `vendor/`, `run.bat`, `VERSION`, this README, security guidance and license notices. Tests, Git settings, GitHub workflows, maintainer tools, untracked files and user data are excluded. Commit runtime changes before packaging.
+To rebuild an older release with its original code and the current packaging rules, run `uv run tools/make_zip.py --ref v1.0.0` (replace the tag as needed). GitHub's automatically generated source-code archives still contain the repository's tests and development files; use the attached portable ZIP to install the app.
 An existing archive of the same version is overwritten.
 Recipients should extract the ZIP before running the launchers and add their own calendars. Node.js is not bundled.
 
