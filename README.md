@@ -1,5 +1,11 @@
 # ICS Calendar Viewer
 
+Have you ever found it inconvenient to manage multiple calendars across different accounts?
+
+For example, you might have one Microsoft Teams account for work and another for a different organization, requiring you to constantly switch between accounts just to check your schedule.
+
+CalendarViewer solves this by bringing your calendars together into one unified view. It supports calendars from Microsoft Teams, Google Calendar, and other services that provide an ICS calendar URL. Once you add their ICS links, CalendarViewer can automatically refresh these calendars so you can see your schedules across multiple accounts and platforms in one place.
+
 A read-only calendar that combines ICS links and imported `.ics` files in a Teams-inspired interface.
 
 The layout adapts to your screen: phones open a daily agenda, portrait and tablet screens open a three-day calendar, and wide landscape screens retain the full desktop layout. Drag, swipe, or scroll the date strip to roll through days; it snaps to the selected date. You can also tap a date or use the arrow keys, and switch between the grid and agenda with the view buttons. On compact screens, the menu button opens calendars and settings; tap an event for its details. Each layout remembers its own view preference, and rotating your device keeps the selected date.
