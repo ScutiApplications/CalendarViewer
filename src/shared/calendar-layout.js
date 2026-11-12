@@ -15,12 +15,7 @@
     return p.views.includes(saved) ? saved : p.defaultView;
   }
   function viewKey(name, base) { return name === 'desktop' ? base : base + '.' + name; }
-  function week(date) {
-    const monday = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    monday.setDate(monday.getDate() - (monday.getDay() + 6) % 7);
-    return Array.from({ length: 7 }, (_, i) => new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i));
-  }
-  const api = { mode, profile, view, viewKey, week };
+  const api = { mode, profile, view, viewKey };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.CalendarLayout = api;
 })(globalThis);

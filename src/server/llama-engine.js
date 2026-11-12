@@ -9,9 +9,8 @@ const crypto = require('node:crypto');
 const net = require('node:net');
 const os = require('node:os');
 const { spawn } = require('node:child_process');
-const { Transform } = require('node:stream');
+const { Transform, Readable } = require('node:stream');
 const { pipeline } = require('node:stream/promises');
-const { Readable } = require('node:stream');
 const { extractZip } = require('./archive');
 
 // A pinned release keeps the program and its command-line flags stable. CPU builds only; a GPU build can be placed by hand.

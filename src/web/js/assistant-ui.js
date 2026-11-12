@@ -55,8 +55,8 @@ function initAssistantUI() {
       if (!response.ok) throw new Error('providers');
       const data = await response.json();
       picker.replaceChildren(...data.items.map(item => {
-        const option = document.createElement('option');
-        option.value = item.name; option.textContent = item.label + (item.available ? '' : ' (not set up)'); option.title = item.hint || '';
+        const option = create('option', '', item.label + (item.available ? '' : ' (not set up)'));
+        option.value = item.name; option.title = item.hint || '';
         option.disabled = !item.available && item.name !== data.current;
         return option;
       }));
@@ -101,12 +101,12 @@ function initAssistantUI() {
     if (!send.disabled && !active && input.value.trim()) document.getElementById('assistant-form').requestSubmit?.();
   };
   function addRecords(item, host) {
-    const group = document.createElement('details');
-    const summary = document.createElement('summary'); summary.textContent = 'Calendar source data (fields may be truncated)'; group.append(summary);
-    const data = document.createElement('pre'); data.textContent = JSON.stringify(item.data, null, 2); group.append(data);
+    const group = create('details');
+    group.append(create('summary', '', 'Calendar source data (fields may be truncated)'));
+    group.append(create('pre', '', JSON.stringify(item.data, null, 2)));
     for (const record of (item.records || []).slice(0, 30)) {
       if (!assistantValidDate(record.start)) continue;
-      const button = document.createElement('button'); button.type = 'button';
+      const button = create('button'); button.type = 'button';
       const date = new Date(record.start);
       button.textContent = `${record.uid ? 'Open event' : 'Jump to date'}: ${record.title} · ${date.toLocaleString()}`;
       button.onclick = () => {
@@ -132,10 +132,10 @@ function initAssistantUI() {
     const controller = new AbortController(); active = controller;
     send.disabled = true; send.hidden = true; stop.hidden = false; stop.disabled = false; input.disabled = true; refresh.disabled = true; newChat.disabled = true; picker.disabled = true; keepChat();
     const started = Date.now();
-    const asked = document.createElement('div'); asked.className = 'msg user'; asked.textContent = question; thread.append(asked);
-    const reply = document.createElement('div'); reply.className = 'msg bot';
-    const steps = document.createElement('div'); steps.className = 'steps'; steps.hidden = true;
-    const bubble = document.createElement('div'); bubble.className = 'bubble'; reply.append(steps, bubble); thread.append(reply);
+    thread.append(create('div', 'msg user', question));
+    const reply = create('div', 'msg bot');
+    const steps = create('div', 'steps'); steps.hidden = true;
+    const bubble = create('div', 'bubble'); reply.append(steps, bubble); thread.append(reply);
     const toEnd = () => { thread.scrollTop = thread.scrollHeight; }; toEnd();
     state.textContent = 'Thinking…';
     // Slow model servers can take minutes; show that the work is alive.
@@ -147,7 +147,7 @@ function initAssistantUI() {
       if (item.type === 'step') {
         // What the assistant is doing right now, shown in the order it happens; earlier steps are marked done.
         for (const old of steps.children) old.className = 'step done';
-        const line = document.createElement('div'); line.className = 'step'; line.textContent = String(item.text || '').slice(0, 120);
+        const line = create('div', 'step', String(item.text || '').slice(0, 120));
         steps.hidden = false; steps.append(line); state.textContent = line.textContent + '…'; toEnd();
       }
       else if (item.type === 'content') { for (const old of steps.children) old.className = 'step done'; bubble.textContent += item.text; toEnd(); }

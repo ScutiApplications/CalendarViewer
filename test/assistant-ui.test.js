@@ -3,6 +3,11 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const script = () => fs.readFileSync('src/web/js/assistant-ui.js', 'utf8');
+// Load the same shared element factory as the page, rather than mocking it.
+function loadUI(context) {
+  vm.runInContext(fs.readFileSync('src/web/js/core.js', 'utf8'), context);
+  vm.runInContext(script(), context);
+}
 test('assistant dialog is opt-in, labelled and text-only with stop and native focus', () => {
   const html = fs.readFileSync('src/web/index.html', 'utf8');
   assert.match(html, /id="assistant-open"[^>]*hidden/);
@@ -19,7 +24,7 @@ test('assistant dialog is opt-in, labelled and text-only with stop and native fo
 });
 test('navigation validates trusted dates and uid against actual expanded events', () => {
   const context = vm.createContext({ document: { getElementById: () => null }, Date, console });
-  vm.runInContext(script(), context);
+  loadUI(context);
   assert.equal(vm.runInContext("assistantValidDate('2026-02-30T09:00:00Z')", context), false);
   assert.equal(vm.runInContext("assistantValidDate('javascript:alert(1)')", context), false);
   assert.equal(vm.runInContext("assistantValidDate('2026-11-05T09:00:00Z')", context), true);
@@ -54,7 +59,7 @@ test('disabled UI stays hidden; enabled UI streams inert text, navigates known e
       ].map(JSON.stringify).join('\n'));
     }
   });
-  vm.runInContext(script(), context);
+  loadUI(context);
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(elements['assistant-open'].hidden, true); assert.equal(calls, 1);
   enabled = true; await elements['assistant-retry'].onclick();
@@ -94,7 +99,7 @@ test('chat memory: sends earlier exchanges, applies summaries, New chat and the 
       bodies.push(JSON.parse(opts.body)); return new Response(replies.map(JSON.stringify).join('\n'));
     }
   });
-  vm.runInContext(script(), context);
+  loadUI(context);
   await new Promise(resolve => setImmediate(resolve));
   const ask = async text => { elements['assistant-question'].value = text; await elements['assistant-form'].onsubmit({ preventDefault() {} }); };
   await ask('first'); await ask('second');
@@ -137,7 +142,7 @@ test('Check Connection shows its result; the provider dropdown lists all provide
       if (url.endsWith('/provider')) { switched = JSON.parse(opts.body).provider; return new Response('ok'); }
     }
   });
-  vm.runInContext(script(), context);
+  loadUI(context);
   await new Promise(resolve => setImmediate(resolve));
   elements['assistant-open'].onclick();
   await new Promise(resolve => setTimeout(resolve, 20));

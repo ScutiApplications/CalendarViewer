@@ -218,7 +218,7 @@ Recipients should extract the ZIP before running the launchers and add their own
 
 - Interface text and controls in the default light and dark themes meet WCAG 2.1 AA contrast (4.5:1 for text), checked by calculation on the theme colours.
 - Buttons, switches and form fields have text labels or `aria-label`s, and status messages use `role="status"` with `aria-live`.
-- Every control shows a visible focus outline, and animations stop under `prefers-reduced-motion`.
+- Every control shows a visible focus outline.
 - Known gaps: calendar colours you choose yourself are not checked for contrast, and the page has not been tested with a screen reader. Reports are welcome.
 
 ## Disclaimer

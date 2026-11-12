@@ -26,17 +26,6 @@ test('saved view choices cannot force a desktop grid onto a phone or overwrite d
   assert.equal(layout.viewKey('portrait', 'view'), 'view.portrait');
 });
 
-test('the week picker crosses year boundaries using local calendar dates without mutating the selection', () => {
-  const selected = new Date(2027, 0, 1, 16, 45);
-  const dates = layout.week(selected);
-  assert.ok(dates, 'week dates must be available');
-  assert.deepEqual(dates.map(d => [d.getFullYear(), d.getMonth() + 1, d.getDate()]), [
-    [2026, 12, 28], [2026, 12, 29], [2026, 12, 30], [2026, 12, 31], [2027, 1, 1], [2027, 1, 2], [2027, 1, 3]
-  ]);
-  assert.equal(selected.getHours(), 16);
-  assert.ok(dates.every(d => d.getHours() === 0));
-});
-
 test('initial browser state restores the view for the current layout, leaving desktop preference intact', () => {
   const values = new Map([['ics-calendar-viewer.view.v1', 'dayGridMonth']]);
   const context = vm.createContext({
