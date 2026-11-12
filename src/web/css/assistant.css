@@ -39,7 +39,7 @@
 .assistant-settings .sb-switch input:disabled { cursor: not-allowed; }
 .assistant-settings #assistant-enabled { margin: 0; }
 .assistant-settings form > .sb-switch:first-child { padding-bottom: 20px; border-bottom: 1px solid var(--border); }
-.assistant-settings input[type=text], .assistant-settings input[type=password], .assistant-settings select { display: block; width: 100%; min-height: 44px; padding: 10px 12px; color: var(--text); background: var(--panel); border: 1px solid var(--border); border-radius: 8px; font: inherit; caret-color: var(--accent); }
+.assistant-settings input[type=text], .assistant-settings input[type=password], .assistant-settings input[type=number], .assistant-settings select { display: block; width: 100%; min-height: 44px; padding: 10px 12px; color: var(--text); background: var(--panel); border: 1px solid var(--border); border-radius: 8px; font: inherit; caret-color: var(--accent); }
 .assistant-settings input:disabled, .assistant-settings select:disabled { opacity: .6; }
 .assistant-settings input::placeholder { color: var(--muted); opacity: 1; }
 #assistant-model-row, #assistant-token-row { min-width: 0; }
@@ -62,7 +62,7 @@
   #assistant-dialog h2, #assistant-settings-dialog h2 { font-size: 20px; }
   .assistant-heading { gap: 10px; }
   .assistant-heading-icon { width: 26px; height: 26px; }
-  .assistant-settings input[type=text], .assistant-settings input[type=password], .assistant-settings select, #assistant-question { font-size: 16px; }
+  .assistant-settings input[type=text], .assistant-settings input[type=password], .assistant-settings input[type=number], .assistant-settings select, #assistant-question { font-size: 16px; }
 }
 
 /* Chat layout: header, scrolling thread, composer. */

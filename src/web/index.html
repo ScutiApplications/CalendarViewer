@@ -179,11 +179,14 @@
       <label class="sb-switch" id="assistant-fallback-row"><span>Use built-in MiniCPM5-2B as backup</span><input type="checkbox" id="assistant-fallback" role="switch"></label>
       <div id="assistant-local-row" hidden>
         <p id="assistant-local-state" role="status" aria-live="polite"></p>
-        <button id="assistant-local-pull" type="button">Download model (about 1.5 GB)</button>
+        <label for="assistant-cpu-threads">CPU threads</label>
+        <input id="assistant-cpu-threads" type="number" min="0" max="0" step="1" value="0" required aria-describedby="assistant-cpu-threads-help">
+        <small id="assistant-cpu-threads-help">0 = automatic. Used only in CPU mode, including CPU fallback. Changes apply when the model next starts; restart CalendarViewer to apply immediately.</small>
+        <button id="assistant-local-pull" type="button">Download engine and model</button>
       </div>
 
 
-    <p id="assistant-builtin-note" hidden>The self-contained model runs on this PC and sends nothing off it. Pressing <strong>Download</strong> fetches the official llama.cpp program from GitHub and the MiniCPM5-2B weights from Hugging Face (about 1.6 GB together), and checks both against their published checksums. It starts on your first question and stops when idle, and it is slower than a hosted provider on a CPU.</p>
+    <p id="assistant-builtin-note" hidden>The self-contained model runs on this PC and sends nothing off it. Pressing <strong>Download</strong> fetches the official llama.cpp runtimes from GitHub and the MiniCPM5-2B weights from Hugging Face, and checks their published checksums. It detects compatible GPUs automatically and uses the CPU when no GPU is usable. It starts on your first question and stops when idle.</p>
     <p id="assistant-hosted-note" hidden>Questions and calendar details are sent to the chosen provider over the internet, and their terms apply. Saved API keys are never shown again. The model name can be changed if your account uses a different one.</p>
   <div class="assistant-settings-footer"><p id="assistant-settings-state" role="status" aria-live="polite"></p><div class="assistant-actions"><button id="assistant-test" type="button">Test connection</button><button id="assistant-save" type="submit" class="primary">Save</button></div></div>
     </form>

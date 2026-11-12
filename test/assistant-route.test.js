@@ -210,3 +210,36 @@ test('provider list marks which providers are set up; switching to one that is n
   assert.equal((await request('/api/assistant/provider', { method: 'POST', body: '{"provider":"llamacpp"}' })).status, 200);
   assert.equal(persisted.at(-1).provider, 'llamacpp');
 });
+
+test('built-in status exposes automatic backend selection and fallback diagnostics', async t => {
+  const { request } = await fixture(t, true, undefined, { route: { engine: { state: async () => ({ installed: true, backend: 'vulkan', device: 'NVIDIA RTX 4050', accelerationError: '' }) } } });
+  const status = await (await request('/api/assistant/status')).json();
+  assert.equal(status.backend, 'vulkan');
+  assert.equal(status.device, 'NVIDIA RTX 4050');
+  assert.equal(status.accelerationError, '');
+});
+
+test('CPU thread setting is validated, persisted, returned and applied to the engine', async t => {
+  const { cpuThreadLimit } = require('../src/server/assistant-config');
+  const threads = Math.min(6, cpuThreadLimit());
+  const saved = {}, persisted = [], configured = [];
+  const { request } = await fixture(t, true, undefined, { route: { saved, env: {}, persist: next => persisted.push(next), engine: { configure: next => configured.push(next) } } });
+  const response = await request('/api/assistant/config', { method: 'PUT', body: JSON.stringify({ cpuThreads: threads }) });
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).cpuThreads, threads);
+  assert.equal(persisted[0].cpuThreads, threads);
+  assert.equal(configured[0].cpuThreads, threads);
+  for (const cpuThreads of [-1, cpuThreadLimit() + 1, '6', null]) {
+    assert.equal((await request('/api/assistant/config', { method: 'PUT', body: JSON.stringify({ cpuThreads }) })).status, 400);
+  }
+  assert.equal(persisted.length, 1);
+});
+
+test('CPU capacity comes from the server and cannot be overridden by a request', async t => {
+  const { cpuThreadLimit } = require('../src/server/assistant-config');
+  const { request } = await fixture(t);
+  const max = cpuThreadLimit();
+  assert.equal((await (await request('/api/assistant/config')).json()).maxCpuThreads, max);
+  const response = await request('/api/assistant/config', { method: 'PUT', body: JSON.stringify({ cpuThreads: max + 1, maxCpuThreads: max + 1 }) });
+  assert.equal(response.status, 400);
+});

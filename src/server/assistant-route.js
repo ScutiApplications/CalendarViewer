@@ -1,7 +1,7 @@
 // Same-origin assistant routes, with independent limits and disconnect cancellation.
 const { readBody, send, sendJson, SECURITY_HEADERS } = require('./http');
 const { ServiceError, ServiceUnreachable, createModelClient } = require('./model-client');
-const { assistantConfig, assistantLocks } = require('./assistant-config');
+const { assistantConfig, assistantLocks, cpuThreadLimit } = require('./assistant-config');
 const { PROVIDERS, isHosted, needsKey } = require('./providers');
 // Remembered chat sent by the page: an optional summary and up to 3 recent exchanges. Throws when the shape is wrong; long text is cut.
 function cleanMemory(value) {
@@ -23,6 +23,8 @@ function createAssistantRoute({ config, client, assistant, refuseUnlessLocalActi
   // Whether a credential exists for each provider (saved or from the environment), without revealing it.
   const credentialSet = name => needsKey(name) && !!(env[PROVIDERS[name].env] || saved.keys?.[name]);
   const view = () => ({
+    cpuThreads: config.cpuThreads ?? 0,
+    maxCpuThreads: cpuThreadLimit(),
     enabled: config.enabled, fallback: config.fallback || '', provider: config.provider, model: config.model, tokenSet: !!config.token,
     tokenSets: Object.fromEntries(Object.keys(PROVIDERS).map(name => [name, credentialSet(name)])),
     models: Object.fromEntries(hostedNames.map(name => [name, saved.models?.[name] || PROVIDERS[name].model])),
@@ -33,6 +35,7 @@ function createAssistantRoute({ config, client, assistant, refuseUnlessLocalActi
   function merge(body, clearOnEmpty) {
     const next = { ...saved };
     if (typeof body.enabled === 'boolean') next.enabled = body.enabled;
+    if (body.cpuThreads !== undefined) next.cpuThreads = body.cpuThreads;
     if (typeof body.provider === 'string' && body.provider) next.provider = body.provider;
     // The backup is '' or 'llamacpp' (the built-in model); a plain true means the built-in model.
     if (typeof body.fallback === 'boolean') next.fallback = body.fallback ? 'llamacpp' : '';
@@ -93,6 +96,7 @@ function createAssistantRoute({ config, client, assistant, refuseUnlessLocalActi
     for (const key of Object.keys(saved)) delete saved[key];
     Object.assign(saved, next);
     Object.assign(config, applied);
+    engine?.configure?.({ cpuThreads: applied.cpuThreads });
     client.configure?.({ provider: applied.provider, model: applied.model, url: applied.url, token: applied.token, fallback: applied.fallback });
     lastStatus = { reachable: false, model: null };
     return sendJson(res, 200, view());
@@ -137,7 +141,8 @@ function createAssistantRoute({ config, client, assistant, refuseUnlessLocalActi
         catch (e) { lastStatus = { reachable: false, model: null, tokenState: e instanceof ServiceError && e.status === 401 ? 'rejected' : undefined }; }
       }
       const builtinState = engine && config.provider === 'llamacpp' ? await engine.state().catch(() => null) : null;
-      return sendJson(res, 200, { load: builtinState?.load ? { ...builtinState.load, idleMinutes: builtinState.idleMinutes } : null, enabled: config.enabled, reachable: config.enabled && !client.offline && lastStatus.reachable, model: lastStatus.model, provider: config.provider, providerLabel: PROVIDERS[config.provider].label, backup: lastStatus.backup === true, fallback: config.fallback || '', tokenSet: !!config.token, tokenState: needsKey(config.provider) && !config.token && !lastStatus.backup ? 'missing' : lastStatus.tokenState, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, offline: client.offline });
+      const acceleration = builtinState ? { backend: builtinState.backend || 'cpu', device: builtinState.device || null, accelerationError: builtinState.accelerationError || '' } : {};
+      return sendJson(res, 200, { ...acceleration, load: builtinState?.load ? { ...builtinState.load, idleMinutes: builtinState.idleMinutes } : null, enabled: config.enabled, reachable: config.enabled && !client.offline && lastStatus.reachable, model: lastStatus.model, provider: config.provider, providerLabel: PROVIDERS[config.provider].label, backup: lastStatus.backup === true, fallback: config.fallback || '', tokenSet: !!config.token, tokenState: needsKey(config.provider) && !config.token && !lastStatus.backup ? 'missing' : lastStatus.tokenState, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, offline: client.offline });
     }
     if (statusRoute || req.method !== 'POST') return send(res, 405, 'Use GET for status or POST for a question.');
     if (!config.enabled) return send(res, 404, 'Assistant disabled.');

@@ -81,7 +81,7 @@ test('client sends hosted requests, returns the parsed reply, and reports provid
   assert.equal((await client.health()).ready, false);
 });
 test('configuration for hosted providers uses default models, saved keys and environment keys', () => {
-  assert.deepEqual(assistantConfig({ provider: 'anthropic', keys: { anthropic: 'a' } }, {}), { enabled: false, provider: 'anthropic', url: 'https://api.anthropic.com', token: 'a', model: 'claude-haiku-5-5', fallback: '' });
+  assert.deepEqual(assistantConfig({ provider: 'anthropic', keys: { anthropic: 'a' } }, {}), { enabled: false, provider: 'anthropic', url: 'https://api.anthropic.com', token: 'a', model: 'claude-haiku-5-5', fallback: '', cpuThreads: 0 });
   assert.equal(assistantConfig({ provider: 'openai' }, {}).model, 'luna-6');
   assert.equal(assistantConfig({ provider: 'gemini' }, {}).model, 'gemini-3.8-flash');
   assert.equal(assistantConfig({ provider: 'openai', keys: { openai: 'saved' }, models: { openai: 'luna-6-mini' } }, { OPENAI_API_KEY: 'env' }).token, 'env');

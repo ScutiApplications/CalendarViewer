@@ -38,7 +38,10 @@ function initAssistantUI() {
       reachable = data.reachable;
       document.getElementById('assistant-privacy').textContent = `Questions and event details go to ${data.provider === 'llamacpp' ? 'the built-in model on this PC and go no further' : `${data.providerLabel || data.provider} over the internet`}. Dates use ${data.timezone}. Answers can be wrong; check the calendar sources below. Recent questions and answers are sent along for context, then forgotten after 5 minutes without use or when you press New chat.`;
       const load = document.getElementById('assistant-load');
-      load.textContent = data.load ? `While the built-in model is loaded it uses about ${data.load.ramPercent}% of this PC's memory, and up to about ${data.load.cpuPercent}% of the CPU while it answers${data.load.idleMinutes ? `; it unloads after ${data.load.idleMinutes} minutes without use` : ''}.` : ''; load.hidden = !data.load;
+      load.textContent = data.backend && data.backend !== 'cpu' ? 'Automatic GPU acceleration: ' + (data.device || data.backend) + '.' :
+        data.load ? `CPU mode. Estimated memory use: ${data.load.ramPercent}% of this PC; estimated CPU use while answering: ${data.load.cpuPercent}%.` : '';
+      if (data.accelerationError) load.textContent += ' ' + data.accelerationError;
+      load.hidden = !load.textContent;
       state.textContent = reachable ? `Ready${data.model ? ' · ' + data.model : ''}` :
         data.tokenState === 'rejected' ? 'The model service rejected the access token. Update it under Calendar assistant in the sidebar.' :
         data.tokenState === 'missing' ? 'No API key is set. Add one under Calendar assistant in the sidebar.' :

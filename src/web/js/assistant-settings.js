@@ -16,6 +16,7 @@ function initAssistantSettings() {
   const localRow = document.getElementById('assistant-local-row');
   const localState = document.getElementById('assistant-local-state');
   const localPull = document.getElementById('assistant-local-pull');
+  const cpuThreads = document.getElementById('assistant-cpu-threads');
   const token = document.getElementById('assistant-token');
   const clear = document.getElementById('assistant-token-clear');
   const state = document.getElementById('assistant-settings-state');
@@ -52,6 +53,9 @@ function initAssistantSettings() {
   function show(data) {
     current = data;
     enabled.checked = data.enabled; fallback.checked = !!data.fallback;
+    cpuThreads.value = String(data.cpuThreads ?? 0);
+    cpuThreads.max = String(data.maxCpuThreads ?? 0);
+    document.getElementById('assistant-cpu-threads-help').textContent = `0 = automatic. This machine supports up to ${cpuThreads.max} CPU threads. Used only in CPU mode, including CPU fallback. Changes apply when the model next starts; restart CalendarViewer to apply immediately.`;
     provider.value = data.provider;
     enabled.disabled = data.locked.enabled; provider.disabled = data.locked.provider;
     render();
@@ -68,18 +72,23 @@ function initAssistantSettings() {
   async function checkLocal() {
     clearTimeout(pollTimer);
     localRow.hidden = !engineInUse();
+    cpuThreads.disabled = localRow.hidden;
     if (localRow.hidden) return;
-    localPull.textContent = 'Download engine and model (about 1.6 GB)';
+    localPull.textContent = 'Download engine and model';
     try {
       const response = await fetch('/api/assistant/builtin', { headers });
       if (!response.ok) throw new Error(assistantStaleServer(response) || 'unavailable');
       const info = await response.json();
-      localPull.disabled = !!info.pulling || info.installed || !info.supported;
-      localPull.hidden = info.installed;
+      const complete = info.installed && info.accelerationReady !== false;
+      localPull.disabled = !!info.pulling || complete || !info.supported;
+      localPull.hidden = complete;
+      if (info.installed && !complete) localPull.textContent = 'Enable automatic GPU support';
+      const mode = info.backend && info.backend !== 'cpu' ? 'GPU: ' + (info.device || info.backend) : 'CPU';
       localState.textContent = info.pulling ? `Downloading… ${info.pulling.percent}% (${info.pulling.status})` :
         info.error ? 'Download failed: ' + info.error :
         !info.supported ? 'This system has no ready-made engine in the app. Choose another provider.' :
-        info.installed ? 'Built-in model ready.' : 'Built-in model not downloaded yet.';
+        info.installed ? 'Built-in model ready. ' + mode + '.' : 'Built-in model not downloaded yet.';
+      if (info.accelerationError) localState.textContent += ' ' + info.accelerationError;
       if (info.pulling && settingsDialog.open) pollTimer = setTimeout(checkLocal, 2000);
     } catch (e) { localState.textContent = 'Built-in model status unavailable: ' + e.message; }
   }
@@ -93,6 +102,7 @@ function initAssistantSettings() {
     const builtin = provider.value === 'llamacpp';
     // The backup is the built-in model ('llamacpp'), or an empty string for none.
     const body = { enabled: enabled.checked, provider: provider.value, fallback: fallback.checked && !builtin ? 'llamacpp' : '' };
+    if (!cpuThreads.disabled) body.cpuThreads = Number(cpuThreads.value);
     if (!builtin) body.model = model.value;
     if (token.value) body.token = token.value;
     return body;

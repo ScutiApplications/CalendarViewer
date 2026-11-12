@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { createAssistant } = require('../src/server/assistant');
-const { assistantConfig } = require('../src/server/assistant-config');
+const { assistantConfig, cpuThreadLimit } = require('../src/server/assistant-config');
 const definitions = [{ name: 'list_events', inputSchema: { type: 'object', properties: {} } }];
 test('multi-turn tools append assistant/tool messages and bound untrusted data', async () => {
   let n = 0; const seen = [];
@@ -54,6 +54,27 @@ test('configuration defaults off, environment overrides config, the built-in mod
   assert.equal(assistantConfig({ enabled: false }, { CALENDAR_ASSISTANT_ENABLED: '1' }).enabled, true);
   assert.equal(assistantConfig({ provider: 'openai', keys: { openai: 'saved' } }, { OPENAI_API_KEY: 'env' }).token, 'env');
   assert.throws(() => assistantConfig({ provider: 'openai', keys: { openai: 'a\nb' } }, {}), /one line/);
+});
+
+test('CPU thread settings default to automatic, persist for hosted fallback, and reject invalid counts', () => {
+  const { savedSettings } = require('../src/server/assistant-config');
+  const threads = Math.min(6, cpuThreadLimit());
+  assert.equal(assistantConfig({}, {}).cpuThreads, 0);
+  assert.equal(assistantConfig({ cpuThreads: threads }, {}).cpuThreads, threads);
+  assert.equal(assistantConfig({ provider: 'openai', cpuThreads: threads }, {}).cpuThreads, threads);
+  assert.equal(savedSettings({ cpuThreads: threads, unused: true }).cpuThreads, threads);
+  for (const cpuThreads of [-1, cpuThreadLimit() + 1, 1.5, '6', null]) assert.throws(() => assistantConfig({ cpuThreads }, {}), /threads/i);
+});
+
+test('CPU thread validation caps manual values at the server CPU capacity', () => {
+  const { cpuThreadLimit, cpuThreadsFor, savedSettings } = require('../src/server/assistant-config');
+  const max = cpuThreadLimit();
+  assert.ok(Number.isInteger(max) && max >= 1);
+  assert.equal(cpuThreadsFor(max), max);
+  assert.equal(cpuThreadsFor(0), 0);
+  assert.throws(() => cpuThreadsFor(max + 1), /threads/i);
+  assert.throws(() => assistantConfig({ cpuThreads: max + 1 }, {}), /threads/i);
+  assert.equal(savedSettings({ cpuThreads: max + 1 }).cpuThreads, max, 'settings copied from a larger machine must remain usable');
 });
 test('prompt prefix is stable across times; the model sees compact local times, the page sees full data', async () => {
   const run = async clock => {

@@ -66,7 +66,7 @@ let modelConfig;
 try { modelConfig = assistantConfig(savedAssistant); }
 catch { modelConfig = { enabled: false, provider: 'llamacpp', url: '' }; console.warn('Assistant disabled: invalid model configuration.'); }
 // The self-contained built-in model keeps its program and weights under data/llama; nothing is downloaded until the user asks.
-const llamaEngine = createLlamaEngine({ dir: path.join(DATA_DIR, 'llama') });
+const llamaEngine = createLlamaEngine({ dir: path.join(DATA_DIR, 'llama'), cpuThreads: modelConfig.cpuThreads });
 const modelClient = createModelClient({ ...modelConfig, engine: llamaEngine });
 // The model itself picks the tools it needs, so tool filtering works with nothing extra installed.
 const toolRouter = createModelRouter({ client: modelClient });
