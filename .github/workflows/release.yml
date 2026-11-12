@@ -93,6 +93,6 @@ jobs:
             gh release create "$TAG" "$archive" --verify-tag --draft --title "$TAG" --generate-notes
           fi
           expected="sha256:$(sha256sum "$archive" | cut -d ' ' -f 1)"
-          actual=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" --jq ".assets[] | select(.name == \"$asset\") | .digest")
+          actual=$(gh release view "$TAG" --json assets --jq ".assets[] | select(.name == \"$asset\") | .digest")
           [[ "$actual" == "$expected" ]] || { echo 'Uploaded ZIP checksum mismatch; release remains draft.'; exit 1; }
           gh release edit "$TAG" --draft=false --latest
