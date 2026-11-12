@@ -383,6 +383,7 @@
   .backup-settings { font-size: 12px; color: var(--muted); }
   .backup-settings summary { cursor: pointer; color: var(--text); padding: 3px 0; }
   .backup-settings p { margin: 6px 0 0; }
+  .backup-settings a:not([hidden]) { display: inline-flex; align-items: center; min-height: 44px; color: var(--focus); }
   .backup-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
   .backup-settings button { min-height: 28px; padding: 3px 6px; font-size: 11px; }
   #backup-error { color: var(--danger); overflow-wrap: anywhere; }

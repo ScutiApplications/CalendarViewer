@@ -69,6 +69,15 @@
     <input id="backup-file" type="file" accept=".json,application/json" hidden>
   </details>
   <button id="assistant-settings-open" type="button" aria-haspopup="dialog" aria-controls="assistant-settings-dialog">Calendar assistant settings</button>
+  <details id="update-settings" class="backup-settings"><summary>Calendar Viewer updates</summary>
+    <p id="app-version">Checking installed version…</p>
+    <p>Checks automatically on startup and every six hours.</p>
+    <button id="check-updates" type="button">Check for updates</button>
+    <button id="install-update" type="button" hidden>Download and install</button>
+    <p id="update-install-note" hidden></p>
+    <p id="update-status" role="status" aria-live="polite" hidden></p>
+    <a id="update-release" target="_blank" rel="noopener noreferrer" hidden>Release notes</a>
+  </details>
 </div>
 <div id="drop-overlay" class="drop-overlay" hidden>Drop .ics files to add</div>
 </aside>
@@ -226,6 +235,7 @@
 <script src="/js/alert-editors.js"></script>
 <script src="/js/alert-delivery.js"></script>
 <script src="/js/sidebar-settings.js"></script>
+<script src="/js/updates-ui.js"></script>
 <script src="/js/sources-ui.js"></script>
 <script src="/js/feeds.js"></script>
 <script src="/js/refresh-controls.js"></script>

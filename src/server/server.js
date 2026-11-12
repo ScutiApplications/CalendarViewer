@@ -22,6 +22,8 @@ const { createLlamaEngine } = require('./llama-engine');
 const { createLayaEngine } = require('./laya-engine');
 const { createBuiltinModels } = require('./builtin-models');
 const { normalizeFeedUrl } = require('../shared/alert-logic.js');
+const { createUpdateChecker } = require('./updates');
+const { createUpdateInstaller } = require('./update-install');
 
 const PORT = Number(process.env.PORT) || 3000;
 const ROOT = path.join(__dirname, '..', '..');
@@ -29,6 +31,9 @@ const DATA_DIR = process.env.CALENDAR_DATA_DIR || path.join(ROOT, 'data'); // th
 const FEEDS_FILE = path.join(DATA_DIR, 'feeds.json');
 // Read once at start, so run.bat can tell when a running server is older than the files on disk.
 const VERSION = (() => { try { return fs.readFileSync(path.join(ROOT, 'VERSION'), 'utf8').trim(); } catch { return 'unknown'; } })();
+const updates = createUpdateChecker({ version: VERSION });
+const updateInstaller = createUpdateInstaller({ root: ROOT, dataDir: DATA_DIR, version: VERSION, checker: updates, port: PORT,
+  restart: () => setTimeout(shutdown, 500).unref() });
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
@@ -95,7 +100,23 @@ const server = http.createServer(async (req, res) => {
       return reply === null ? send(res, 202, '') : sendJson(res, 200, reply);
     }
 
-    if (url.pathname === '/api/version' && req.method === 'GET') return sendJson(res, 200, { version: VERSION });
+    if (url.pathname === '/api/version' && req.method === 'GET') return sendJson(res, 200, { version: VERSION, pid: process.pid });
+    if (url.pathname === '/api/updates/check') {
+      if (refuseUnlessLocalAction(req, res)) return;
+      if (req.method !== 'POST') return send(res, 405, 'Use POST.');
+      try { return sendJson(res, 200, { ...await updates.check(), installation: await updateInstaller.state() }); }
+      catch (error) { return sendError(res, error); }
+    }
+    if (url.pathname === '/api/updates/status' || url.pathname === '/api/updates/install') {
+      if (refuseUnlessLocalAction(req, res)) return;
+      if (url.pathname.endsWith('/status') && req.method === 'GET') return sendJson(res, 200, await updateInstaller.state());
+      if (url.pathname.endsWith('/install') && req.method === 'POST') {
+        const payload = JSON.parse(await readBody(req, 1000));
+        if (typeof payload?.version !== 'string') return send(res, 400, 'Update version is required.');
+        return sendJson(res, 202, await updateInstaller.start(payload.version));
+      }
+      return send(res, 405, 'Method not allowed.');
+    }
     if (url.pathname === '/api/assistant' || url.pathname === '/api/assistant/status' || url.pathname === '/api/assistant/config' || url.pathname === '/api/assistant/test' || url.pathname === '/api/assistant/builtin' || url.pathname === '/api/assistant/builtin/pull' || url.pathname === '/api/assistant/providers' || url.pathname === '/api/assistant/provider') return await assistantRoute(req, res);
 
     if (url.pathname.startsWith('/api/backup/')) {

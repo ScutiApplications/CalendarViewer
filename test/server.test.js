@@ -72,6 +72,16 @@ test('server serves the web files safely and guards the startup endpoint', async
   const version = await request('GET', '/api/version');
   assert.equal(version.status, 200);
   assert.equal(JSON.parse(version.data).version, fs.readFileSync(path.join(__dirname, '..', 'VERSION'), 'utf8').trim());
+  assert.equal((await request('POST', '/api/updates/check')).status, 403);
+  assert.equal((await request('POST', '/api/updates/check', { 'X-Calendar-Action': '1', Origin: 'https://evil.example' })).status, 403);
+  assert.equal((await request('GET', '/api/updates/check', { 'X-Calendar-Action': '1' })).status, 405);
+  for (const route of ['/api/updates/status', '/api/updates/install']) {
+    assert.equal((await request('POST', route)).status, 403);
+    assert.equal((await request('POST', route, { 'X-Calendar-Action': '1', Origin: 'https://evil.example' })).status, 403);
+  }
+  const updateState = await request('GET', '/api/updates/status', { 'X-Calendar-Action': '1' });
+  assert.equal(updateState.status, 200);
+  assert.equal(JSON.parse(updateState.data).supported, false); // Tests run a Git checkout, never a portable install.
 
   const body = JSON.stringify({ enabled: false });
   const post = headers => request('POST', '/api/startup', { 'Content-Type': 'application/json', ...headers }, body).then(r => r.status);

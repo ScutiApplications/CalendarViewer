@@ -17,7 +17,8 @@ src/server/         server.js (routes and startup), http.js, static-files.js, fe
                     reminders.js (snoozes), backups.js, mcp.js (MCP adapter), calendar-tools.js (shared read-only tools),
                     assistant.js (tool loop), model-client.js (built-in and hosted transport), providers.js, llama-engine.js,
                     assistant-config.js, assistant-route.js, laya-engine.js, builtin-models.js, tool-router.js,
-                    json-store.js (atomic JSON files), startup.js, powershell.js
+                    json-store.js (atomic JSON files), startup.js, powershell.js,
+                    updates.js (GitHub releases), update-install.js (download/staging), update-worker.js (installation/rollback)
 src/shared/         alert-logic.js, backup.js and search.js (page and server), storage.js and calendar-layout.js (page only),
                     assistant-dates.js and free-time.js (server calculations)
 src/web/            index.html, css/ (styles, responsive, assistant), js/ (one script per feature including assistant-ui.js, main.js last)
@@ -54,9 +55,15 @@ Double-click `run.bat` (or run `run.bat -NoBrowser` to skip the browser). It doe
 - Server running and up to date: leaves it running and opens the calendar.
 - Server running but older than the files on disk (the `VERSION` differs, or a file in `src/` or `vendor/` is newer than the server process): restarts it, then opens the calendar.
 
-To update, extract the new version over the application folder (keep `data/`), then double-click `run.bat`. Maintainers: see [Releasing](#releasing).
+To update a Windows portable installation, press **Download and install** when an update is offered. Manual alternative: extract the new version over the application folder (keep `data/`), then double-click `run.bat`. Maintainers: see [Releasing](#releasing).
 
 ## Start, restart, and stop
+
+**Updates:** Calendar Viewer checks the latest published stable GitHub Release from `ScutiApplications/CalendarViewer` when the page opens and every six hours while it stays open. Checks ignore drafts and prereleases, share in-flight requests and cache successful results for five minutes. You can also press **Check for updates** under **Calendar Viewer updates** in sidebar settings.
+
+When a newer version is available, press **Download and install** once. Only this button starts downloading or installing. Calendar Viewer verifies the release ZIP against GitHub's published SHA-256, stages it while the current server keeps running, then installs and restarts automatically. The page reconnects and reloads. Your `data/` folder (calendars, settings, downloaded MiniCPM and Laya models) and browser preferences are preserved. Previous application files remain under `data/updates/job-*/previous/`; failed startup restores them and restarts the previous server. File removals use the previous installation's generated `update-manifest.json`, so unrelated local files are preserved.
+
+One-click installation supports Windows portable ZIP installations. Git checkouts and other operating systems show release notes and explain why installation is unavailable; use your normal Git or manual update workflow there. Releases without a verified installation ZIP cannot be installed with the button. Restart interrupts any active assistant response.
 
 Extract the entire application into a permanent folder, then double-click `run.bat`.
 It starts the server in the background and opens <http://localhost:3000>. Closing the launcher or the browser does not stop the server.
@@ -187,15 +194,15 @@ To use it from an MCP client, add an entry like this to the client's server conf
 
 ## Releasing
 
-1. Put the new number in `VERSION` and commit it on `main`.
-2. Tag that commit and push `main` with the tag (`X.Y.Z` is the number in `VERSION`):
+1. Put the next stable number (`X.Y.Z`) in `VERSION`, commit the changes and push to `main`.
+2. The **release** GitHub Actions workflow runs the tests on Windows and Linux, builds `CalendarViewer-X.Y.Z.zip`, creates tag `vX.Y.Z` and uploads a draft release with generated notes.
+3. After checking GitHub's uploaded ZIP digest against the local SHA-256, the workflow publishes the release as latest. Failed tests prevent publication; a failed upload verification leaves a draft for investigation.
 
-   ```bat
-   git tag -a vX.Y.Z -m vX.Y.Z
-   git push origin main vX.Y.Z
-   ```
+The workflow uses GitHub's built-in token; no personal token or local GitHub CLI is required. You can retry from **Actions > release > Run workflow** on `main`. An existing published version is left alone, and a version tag pointing to another commit is rejected: increase `VERSION` for each new release. Changes to the release workflow or packager also run the workflow.
 
-3. Run `tools\make_zip.bat`. It builds the desktop ZIP, selects it in Explorer and opens GitHub's new-release page for the tag, where you drag the ZIP on and publish.
+For manual packaging, `tools\make_zip.bat` builds the ZIP and opens GitHub's release page. Automated releases already attach the ZIP.
+
+The update checker uses published stable Releases, not commits on `main`. Keep release tags in `vX.Y.Z` form matching `VERSION`, attach `CalendarViewer-X.Y.Z.zip` from the packager (with its single `CalendarViewer/` folder), and publish the release as the latest stable version. GitHub supplies the asset's SHA-256 digest; the installer requires it, validates the ZIP version and refuses packages that touch user data, secrets or filesystem links. Drafts, tags without a Release and prereleases are not offered by the stable update checker.
 
 ## Package the application
 

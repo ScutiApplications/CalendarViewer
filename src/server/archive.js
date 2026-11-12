@@ -43,7 +43,7 @@ async function extractZip(file, dir, { maxBytes = 1024 * 1024 * 1024 } = {}) {
     if (buffer.readUInt32LE(entry.local) !== LOCAL) throw new Error('Damaged zip entry.');
     const start = entry.local + 30 + buffer.readUInt16LE(entry.local + 26) + buffer.readUInt16LE(entry.local + 28);
     const raw = buffer.subarray(start, start + entry.compressed);
-    const data = entry.method === 0 ? raw : entry.method === 8 ? await inflateRaw(raw) : null;
+    const data = entry.method === 0 ? raw : entry.method === 8 ? await inflateRaw(raw, { maxOutputLength: Math.max(1, entry.size) }) : null;
     if (!data) throw new Error('Unsupported zip compression.');
     if (data.length !== entry.size) throw new Error('Zip entry size mismatch.');
     await fsp.mkdir(path.dirname(target), { recursive: true });

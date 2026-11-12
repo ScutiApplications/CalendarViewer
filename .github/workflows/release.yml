@@ -1,0 +1,98 @@
+name: release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - VERSION
+      - .github/workflows/release.yml
+      - tools/make_zip.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: calendarviewer-release
+  cancel-in-progress: false
+
+jobs:
+  test:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      - run: node --test
+
+  publish:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v10
+        with:
+          version: '0.13.7'
+          python-version: '3.12'
+          enable-cache: false
+      - name: Validate version and existing release
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(tr -d '\r\n' < VERSION)
+          [[ "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || { echo 'VERSION must contain X.Y.Z'; exit 1; }
+          tag="v$version"
+          if git rev-parse --verify "refs/tags/$tag" >/dev/null 2>&1; then
+            [[ "$(git rev-parse "$tag^{commit}")" == "$GITHUB_SHA" ]] || { echo 'Version tag already points to another commit; increase VERSION.'; exit 1; }
+          fi
+          draft=$(gh release view "$tag" --json isDraft --jq .isDraft 2>/dev/null || true)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "draft=$draft" >> "$GITHUB_OUTPUT"
+          if [[ "$draft" == false ]]; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+            echo "$tag already published; nothing to do."
+          fi
+      - name: Package portable application
+        if: steps.version.outputs.published != 'true'
+        run: uv run tools/make_zip.py
+      - name: Create release and verify upload before publishing
+        if: steps.version.outputs.published != 'true'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          TAG: ${{ steps.version.outputs.tag }}
+          EXISTING_DRAFT: ${{ steps.version.outputs.draft }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! git rev-parse --verify "refs/tags/$TAG" >/dev/null 2>&1; then
+            git tag "$TAG" "$GITHUB_SHA"
+            git push origin "refs/tags/$TAG"
+          fi
+          asset="CalendarViewer-$VERSION.zip"
+          archive="dist/$asset"
+          if [[ "$EXISTING_DRAFT" == true ]]; then
+            gh release upload "$TAG" "$archive" --clobber
+          else
+            gh release create "$TAG" "$archive" --verify-tag --draft --title "$TAG" --generate-notes
+          fi
+          expected="sha256:$(sha256sum "$archive" | cut -d ' ' -f 1)"
+          actual=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" --jq ".assets[] | select(.name == \"$asset\") | .digest")
+          [[ "$actual" == "$expected" ]] || { echo 'Uploaded ZIP checksum mismatch; release remains draft.'; exit 1; }
+          gh release edit "$TAG" --draft=false --latest
