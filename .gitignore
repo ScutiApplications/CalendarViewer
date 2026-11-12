@@ -1,0 +1,39 @@
+# Anything starting with "." or "_" (.env*, .venv/, .secrets/, .claude/, .codex/, ...)
+.*
+!.gitignore
+!.gitattributes
+!.github/
+!.github/workflows/
+!.github/workflows/*.yml
+_*
+!__init__.py
+!__main__.py
+
+# App data and runtime state
+*.ics
+data/
+
+# Build output
+dist/
+build/
+*.zip
+
+# Dependencies and Python caches
+node_modules/
+venv/
+*.py[cod]
+
+# Secrets and logs
+secrets/
+*.pem
+*.key
+*.log
+
+# AI working files: specs, plans, instructions, design notes
+docs/superpowers/
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+DESIGN.md
+DESIGN.json
+PRODUCT.md
