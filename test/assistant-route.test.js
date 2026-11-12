@@ -277,7 +277,7 @@ test('saving a hosted provider does not grant consent for its probe or questions
   let probes = 0;
   const saved = {};
   const { request } = await fixture(t, true, undefined, { route: { saved, env: {}, createClient: () => { probes++; throw new Error('must not contact provider'); } } });
-  const put = await request('/api/assistant/config', { method: 'PUT', body: JSON.stringify({ provider: 'anthropic', token: 'k', hostedConsent: acknowledgement('anthropic') }) });
+  const put = await request('/api/assistant/config', { method: 'PUT', body: JSON.stringify({ enabled: true, provider: 'anthropic', token: 'k', hostedConsent: acknowledgement('anthropic') }) });
   assert.equal(put.status, 200); await put.text();
   assert.equal(Object.hasOwn(saved, 'hostedConsent'), false);
   for (const hostedConsent of [undefined, acknowledgement('openai'), { ...acknowledgement('anthropic'), revision: 'old' }]) {
