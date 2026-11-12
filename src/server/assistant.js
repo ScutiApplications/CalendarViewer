@@ -116,19 +116,15 @@ function createAssistant({ client, tools, router = null, now = Date.now }) {
       if (reply.backup && !noticed) { noticed = true; emit({ type: 'notice', text: 'The selected provider was unavailable, so the built-in MiniCPM5-2B answered.' }); }
       if (reply.finish_reason === 'length') throw new Error('The model ran out of tokens. Try a shorter question or smaller date range.');
       if (reply.finish_reason === 'stop') {
-        if (!grounded) {
-          // A calendar-looking question answered without a tool gets one nudge; greetings and small talk are shown, labelled.
-          if (!nudged && CALENDAR_WORDS.test(question)) {
-            nudged = true;
-            messages.push({ role: 'assistant', content: String(reply.content || '').slice(0, 300) || 'I will check.' }, { role: 'user', content: 'Call the calendar tool now and answer from its result.' });
-            continue;
-          }
-          if (typeof reply.content !== 'string' || !reply.content.trim()) throw new Error('The model returned an empty answer. Please try again.');
-          emit({ type: 'content', text: `${reply.content.trim()}\n\n(Not checked against your calendar. Ask about events, dates or free time for a calendar answer.)` });
-          emit({ type: 'done' }); return;
+        // A calendar-looking question answered without a tool gets one nudge; greetings and small talk are shown, labelled.
+        if (!grounded && !nudged && CALENDAR_WORDS.test(question)) {
+          nudged = true;
+          messages.push({ role: 'assistant', content: String(reply.content || '').slice(0, 300) || 'I will check.' }, { role: 'user', content: 'Call the calendar tool now and answer from its result.' });
+          continue;
         }
         if (typeof reply.content !== 'string' || !reply.content.trim()) throw new Error('The model returned an empty answer. Please try again.');
-        if (!streamed) emit({ type: 'content', text: reply.content });
+        if (!grounded) emit({ type: 'content', text: `${reply.content.trim()}\n\n(Not checked against your calendar. Ask about events, dates or free time for a calendar answer.)` });
+        else if (!streamed) emit({ type: 'content', text: reply.content });
         emit({ type: 'done' }); return;
       }
       if (reply.finish_reason !== 'tool_calls' || !Array.isArray(reply.tool_calls) || !reply.tool_calls.length || reply.tool_calls.length > 4) throw new Error('The model returned invalid tool calls.');

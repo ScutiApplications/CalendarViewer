@@ -18,18 +18,16 @@ function createFeedFetcher() {
         await r.body?.cancel();
         link = new URL(next, link).href;
       }
-    } catch (e) { throw e.name === 'TimeoutError' ? new Error('Feed timed out') : e; }
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const chunks = [];
-    let size = 0;
-    try {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const chunks = [];
+      let size = 0;
       for await (const c of r.body) {
         size += c.length;
         if (size > FEED_MAX_BYTES) { r.body.cancel().catch(() => {}); throw new Error('Feed is larger than 10 MB'); }
         chunks.push(c);
       }
+      return Buffer.concat(chunks).toString();
     } catch (e) { throw e.name === 'TimeoutError' ? new Error('Feed timed out') : e; }
-    return Buffer.concat(chunks).toString();
   };
 }
 

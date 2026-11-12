@@ -48,12 +48,11 @@
 #assistant-url-help { display: block; margin-top: 6px; }
 .assistant-token-meta { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; margin-top: 6px; }
 #assistant-token-clear { padding: 6px 0; min-height: 32px; border: 0; background: transparent; color: var(--danger); font-size: 12px; }
-#assistant-hosted-note { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+#assistant-hosted-note, #assistant-settings-state { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
 #assistant-local-row { padding: 14px; border-radius: 10px; background: var(--surface-muted); }
 #assistant-local-state { margin: 0 0 10px; font-size: 12px; }
 #assistant-local-pull { min-height: 44px; max-width: 100%; white-space: normal; }
 .assistant-settings-footer { border-top: 1px solid var(--border); padding-top: 16px; }
-#assistant-settings-state { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
 #assistant-settings-state:empty { display: none; }
 #assistant-settings-state:empty + .assistant-actions { margin-top: 0; }
 #assistant-save { min-width: 104px; margin-left: auto; }

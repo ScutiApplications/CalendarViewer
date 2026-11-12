@@ -56,6 +56,8 @@ function createCalendarTools({ sources, now = Date.now }) {
       location: p.location || '', calendars: p.sources, overlapsWith: p.conflicts };
   };
 
+  const listed = (events, limit = MAX_EVENTS) => ({ total: events.length, events: events.slice(0, limit).map(summary) });
+
   const handlers = {
     async list_calendars() {
       return (await sources()).map(s => ({ name: s.name, kind: s.alertKey.startsWith('f:') ? 'link' : 'imported', enabled: s.enabled, events: s.events.length }));
@@ -63,7 +65,7 @@ function createCalendarTools({ sources, now = Date.now }) {
     async list_events(args) {
       const [from, to] = range(args);
       const events = merged(await sources(), from, to).filter(e => Search.matches(e, args.query));
-      return { total: events.length, events: events.slice(0, MAX_EVENTS).map(summary) };
+      return listed(events);
     },
     async get_event(args) {
       if (typeof args.uid !== 'string' || !args.uid) fail('uid is required.');
@@ -122,12 +124,12 @@ function createCalendarTools({ sources, now = Date.now }) {
       if (typeof args.query !== 'string' || !args.query.trim()) fail('query is required.');
       const [from, to] = range(args, now() - 30 * DAY_MS, 90 * DAY_MS);
       const events = merged(await sources(), from, to).filter(e => Search.matches(e, args.query));
-      return { total: events.length, events: events.slice(0, 20).map(summary) };
+      return listed(events, 20);
     },
     async list_all_day(args) {
       const [from, to] = range(args);
       const events = merged(await sources(), from, to).filter(e => e.allDay);
-      return { total: events.length, events: events.slice(0, MAX_EVENTS).map(summary) };
+      return listed(events);
     },
     async recurring_summary(args) {
       if (typeof args.query !== 'string' || !args.query.trim()) fail('query is required.');

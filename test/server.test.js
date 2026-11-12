@@ -141,7 +141,7 @@ test('server exits cleanly on SIGTERM', { skip: process.platform === 'win32' }, 
   assert.equal(await new Promise(resolve => server.on('exit', resolve)), 0);
 });
 
-test('feed fetches follow redirects, and a network-facing server refuses private addresses', async t => {
+test('feed fetches follow redirects and stop after too many', async t => {
   const feeds = http.createServer((req, res) => {
     if (req.url === '/old') return res.writeHead(302, { Location: '/new' }).end();
     if (req.url === '/loop') return res.writeHead(302, { Location: '/loop' }).end();

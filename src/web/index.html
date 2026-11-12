@@ -169,7 +169,7 @@
         <option value="gemini">Google Gemini (3.8 Flash)</option>
       </select></div>
       <div id="assistant-token-row">
-        <label for="assistant-token" id="assistant-token-label">API key</label>
+        <label for="assistant-token">API key</label>
         <input type="password" id="assistant-token" autocomplete="off" spellcheck="false" aria-describedby="assistant-token-state"><div class="assistant-token-meta"><small id="assistant-token-state"></small><button id="assistant-token-clear" type="button" hidden>Remove saved key</button></div>
       </div>
       <div id="assistant-model-row" hidden>
@@ -196,7 +196,7 @@
   <p id="assistant-load" class="assistant-warning" hidden></p>
   <div id="assistant-thread" role="log" aria-live="polite" aria-relevant="additions text" aria-label="Conversation" tabindex="0"></div>
   <form id="assistant-form">
-    <div id="assistant-input-row" class="chat-composer">
+    <div class="chat-composer">
       <label for="assistant-question" class="sr-only">Ask about your calendar</label>
       <textarea id="assistant-question" maxlength="2000" rows="1" required placeholder="Ask about your calendar…" aria-describedby="assistant-keyboard-help"></textarea>
       <button id="assistant-send" type="submit" class="primary chat-send" disabled aria-label="Send question"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
