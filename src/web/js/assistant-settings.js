@@ -109,7 +109,7 @@ function initAssistantSettings() {
     event.preventDefault();
     send(fields(), 'Saved.');
   };
-  const reasons = { 'not-ready': 'The model is not ready. For the built-in model press Download first.', 'token-rejected': 'Reached the service, but it rejected the access token or API key.', 'no-key': 'Enter an API key first.', 'no-tools': 'Reached the service, but it does not accept tool calls. Update and redeploy it (CNV_MiniCPM_Model with tool support).', 'rate-limited': 'Reached the service, but it is rate limiting this token.', 'service-error': 'Reached the service, but it returned an error.', unreachable: 'Could not reach the service. Check the address, port, firewall and internet connection.' };
+  const reasons = { 'not-ready': 'The model is not ready. For the built-in model press Download first.', 'token-rejected': 'Reached the service, but it rejected the access token or API key.', 'no-key': 'Enter an API key first.', 'no-tools': 'Reached the service, but it does not accept tool calls. Choose a model that supports tool calls in the assistant settings.', 'rate-limited': 'Reached the service, but it is rate limiting this token.', 'service-error': 'Reached the service, but it returned an error.', unreachable: 'Could not reach the service. Check the address, port, firewall and internet connection.' };
   testButton.onclick = async () => {
     testButton.disabled = true; state.textContent = 'Testing…';
     try {

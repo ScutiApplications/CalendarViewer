@@ -70,6 +70,16 @@ test('pickUpNext returns the next non-cancelled events that have not started', (
   assert.deepEqual(L.pickUpNext([], now), []);
 });
 
+test('pickUpNext preserves browser event objects and input ordering', () => {
+  const later = { title: 'Later', start: new Date(now + 90 * M) };
+  const soon = { title: 'Soon', start: new Date(now + 15 * M), allDay: true };
+  const events = [later, { title: 'Cancelled: Sync', start: new Date(now + M) },
+    { title: 'Starting now', start: new Date(now) }, soon];
+  const original = [...events];
+  assert.equal(L.pickUpNext(events, now, 1)[0], soon);
+  assert.deepEqual(events, original);
+});
+
 test('visible events hide cancelled titles only when requested', () => {
   const events = ['Canceled: Sync', '  CANCELLED weekly', 'Review cancelled orders'].map(title => ({ title }));
   assert.deepEqual(L.visibleEvents(events, false), events);

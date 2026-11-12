@@ -1,5 +1,4 @@
 // Checking for due alerts and showing them: in-app toasts and browser notifications.
-// -- Scheduler --
 function runAlertCheck(silent) {
   if (restoringBackup) return;
   const now = Date.now();
@@ -10,7 +9,7 @@ function runAlertCheck(silent) {
   catch { return; }
   due.forEach(a => {
     firedAlerts[a.id] = a.occ.start;
-    const deferredUntil = snoozedOccurrences.get(a.occ.key + '|' + a.occ.start);
+    const deferredUntil = snoozedOccurrences.get(occurrenceKey(a.occ));
     if (!silent && !a.superseded && !(deferredUntil && now <= deferredUntil + 30000)) deliverAlert(a.occ, now);
   });
   pruneFired(firedAlerts, now);
@@ -23,7 +22,7 @@ function deliverAlert(occ, now) {
   if (serverToasts) return; // The server already shows the Windows toast.
   if ('Notification' in window && Notification.permission === 'granted') {
     try {
-      const n = new Notification(occ.title, { body, tag: occ.key + '|' + occ.start });
+      const n = new Notification(occ.title, { body, tag: occurrenceKey(occ) });
       n.onclick = () => { window.focus(); n.close(); };
     } catch { /* Some contexts block the constructor; the in-app toast already fired. */ }
   }
@@ -46,7 +45,7 @@ function showToast(occ, body) {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ key: occ.key, start: occ.start })
         });
-        snoozedOccurrences.set(occ.key + '|' + occ.start, deferred.dueAt);
+        snoozedOccurrences.set(occurrenceKey(occ), deferred.dueAt);
         toast.remove();
         setStatus('Reminder snoozed for 5 minutes.');
       } catch (e) {

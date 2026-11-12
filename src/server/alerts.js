@@ -82,7 +82,7 @@ function createAlertService({ readFeeds, fetchText, notify = windowsToast, state
     const horizon = Math.max(logic.maxConfiguredOffset(state.rules) * 60000, reminders.horizon());
     if (!horizon) return;
     let due, deferred;
-    const suppressed = new Set(reminders.status().pending.map(s => s.key + '|' + s.start));
+    const suppressed = new Set(reminders.status().pending.map(logic.occurrenceKey));
     try {
       const sources = currentSources(readFeeds());
       const occurrences = logic.collectOccurrences(sources, t, horizon);
@@ -107,7 +107,7 @@ function createAlertService({ readFeeds, fetchText, notify = windowsToast, state
     };
     due.forEach(a => {
       fired[a.id] = a.occ.start;
-      if (silent || a.superseded || suppressed.has(a.occ.key + '|' + a.occ.start)) return;
+      if (silent || a.superseded || suppressed.has(logic.occurrenceKey(a.occ))) return;
       deliver(a.occ);
     });
     deferred.forEach(a => deliver(a.occ));

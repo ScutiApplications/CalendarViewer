@@ -1,5 +1,4 @@
 // The Day view "Up next" rail (it lives outside #cal, which FullCalendar owns).
-// ---- Day view "Up next" rail (lives outside #cal, which FullCalendar owns) ----
 function showUpNext(show) {
   upNextRail.hidden = !show;
   calBox.classList.toggle('show-rail', show);

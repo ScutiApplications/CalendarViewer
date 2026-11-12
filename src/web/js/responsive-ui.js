@@ -33,9 +33,7 @@ function renderCompactNext() {
   const now = Date.now();
   let event;
   try {
-    event = expandSources(sources, new Date(now), new Date(now + WEEK_MS))
-      .filter(e => e.start.getTime() > now && !isCancelledTitle(e.title))
-      .sort((a, b) => a.start - b.start)[0];
+    event = pickUpNext(expandSources(sources, new Date(now), new Date(now + WEEK_MS)), now, 1)[0];
   } catch { /* A broken source must not stop the rest of the interface. */ }
   panel.hidden = !event;
   panel.replaceChildren();

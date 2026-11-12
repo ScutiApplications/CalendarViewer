@@ -15,9 +15,11 @@ scripts/            calendar.ps1 (start, restart, stop, startup, toast)
 tools/              make_zip.bat and make_zip.py: ZIP for a GitHub release
 src/server/         server.js (routes and startup), http.js, static-files.js, feed-fetch.js, alerts.js (background alerts),
                     reminders.js (snoozes), backups.js, mcp.js (MCP adapter), calendar-tools.js (shared read-only tools),
-                    assistant.js (tool loop), model-client.js (MiniCPM), assistant-config.js, assistant-route.js,
+                    assistant.js (tool loop), model-client.js (built-in and hosted transport), providers.js, llama-engine.js,
+                    assistant-config.js, assistant-route.js,
                     json-store.js (atomic JSON files), startup.js, powershell.js
-src/shared/         alert-logic.js, backup.js and search.js (page and server), storage.js (page only), assistant-dates.js and free-time.js (server calculations)
+src/shared/         alert-logic.js, backup.js and search.js (page and server), storage.js and calendar-layout.js (page only),
+                    assistant-dates.js and free-time.js (server calculations)
 src/web/            index.html, css/ (styles, responsive, assistant), js/ (one script per feature including assistant-ui.js, main.js last)
 vendor/             FullCalendar, ical.js and third-party licences
 test/               run with: node --test
@@ -127,7 +129,7 @@ Calendar data stays on your machine. Remote feed links are saved in `data/feeds.
 The server listens only on `127.0.0.1`. This application does not edit the source calendars.
 The [MCP endpoint](#mcp-server) returns event titles, locations and descriptions to any local program that calls it. The endpoint has no token, so keep the server on `127.0.0.1`.
 
-The app contacts the calendar hosts you add (including redirects) and, when you enable the assistant, the configured model service (MiniCPM on this computer or another device, or a hosted provider you chose: Anthropic, OpenAI or Google). Opening a meeting or description link contacts its destination. All libraries are bundled locally: there is no CDN request and no telemetry. The server sends a Content Security Policy that allows only scripts and connections from its own origin.
+The app contacts the calendar hosts you add (including redirects) and, when you enable the assistant, the built-in model on this computer or a hosted provider you chose (Anthropic, OpenAI or Google). Downloading the built-in engine and model contacts GitHub and Hugging Face. Opening a meeting or description link contacts its destination. All libraries are bundled locally: there is no CDN request and no telemetry. The server sends a Content Security Policy that allows only scripts and connections from its own origin.
 
 ## AI assistant (optional)
 

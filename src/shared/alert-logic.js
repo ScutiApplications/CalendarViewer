@@ -10,6 +10,8 @@ const DEFAULT_SOURCE_COLOR = '#5b5fc7';
 const VIEWS = ['timeGridDay', 'timeGridWorkWeek', 'timeGridWeek', 'dayGridMonth', 'listWeek', 'timeGridThreeDay', 'listDay'];
 const eventSourceKeys = p => p.sourceDetails.map(s => s.key).filter(Boolean);
 const eventAlertKey = (uid, title) => uid || 'fb:' + title;
+// Stable occurrence identity shared by snoozes, delivery suppression and notification tags.
+const occurrenceKey = occ => occ.key + '|' + occ.start;
 const URL_PATTERN = /https?:\/\/[^\s<>"']+/gi;
 const isCancelledTitle = title => /^\s*cancell?ed\b/i.test(title);
 
@@ -99,7 +101,7 @@ function findDueAlerts(rules, occurrences, fired, now) {
   occurrences.forEach(occ => {
     if (occ.start <= now || isCancelledTitle(occ.title)) return;
     const alerts = resolveOffsets(rules, occ.key, occ.sourceKeys)
-      .map(offset => ({ id: occ.key + '|' + occ.start + '|' + offset, offset, occ }))
+      .map(offset => ({ id: occurrenceKey(occ) + '|' + offset, offset, occ }))
       .filter(a => !(a.id in fired) && occ.start - a.offset * 60000 <= now);
     alerts.forEach((a, i) => due.push({ id: a.id, offset: a.offset, occ, superseded: i < alerts.length - 1 }));
   });
@@ -280,7 +282,7 @@ if (typeof module !== 'undefined') {
   module.exports = {
     DAY_MS, WEEK_MS, expandSources, upNext, pruneFired, MAX_OFFSET_MIN, SNOOZE_MS, DELIVERY_WINDOW_MS, DEFAULT_SOURCE_COLOR, VIEWS, normalizeOffsets, formatOffset, sanitizeRules, resolveOffsets,
     maxConfiguredOffset, isAlertable, normalizeFeedUrl, findDueAlerts, alertBody, parseIcs, deduplicateEvents,
-    findMeetingUrl, collectOccurrences, pickUpNext,
+    findMeetingUrl, collectOccurrences, pickUpNext, occurrenceKey,
     isCancelledTitle, visibleEvents, markConflicts, syncHealth
   };
 }

@@ -3,8 +3,6 @@ const { readBody, send, sendJson, SECURITY_HEADERS } = require('./http');
 const { ServiceError, ServiceUnreachable, createModelClient } = require('./model-client');
 const { assistantConfig, assistantLocks } = require('./assistant-config');
 const { PROVIDERS, isHosted, needsKey } = require('./providers');
-// Tool filtering (the model's own pick) only runs for the built-in models; big hosted models get every tool.
-const BUILT_IN = new Set(['llamacpp']);
 // Remembered chat sent by the page: an optional summary and up to 3 recent exchanges. Throws when the shape is wrong; long text is cut.
 function cleanMemory(value) {
   if (value === undefined) return { summary: '', turns: [] };
@@ -62,7 +60,7 @@ function createAssistantRoute({ config, client, assistant, refuseUnlessLocalActi
     let target;
     try { target = assistantConfig(merge(body, false), env); } catch (e) { return send(res, 400, e.message); }
     if (needsKey(target.provider) && !target.token) return sendJson(res, 200, { ok: false, reason: 'no-key' });
-    // /health needs no token, so it proves nothing about the token or tool support; a one-word chat with one tool does.
+    // Readiness alone cannot verify credentials or tool support; a one-word chat with one tool does.
     const probe = { messages: [{ role: 'user', content: 'ping' }], tools: [{ name: 'ping', description: 'Unused.', parameters: { type: 'object', properties: {} } }], temperature: 0, max_tokens: 8 };
     try {
       // The test checks the chosen provider alone, so a working backup cannot hide a broken key.
@@ -172,7 +170,8 @@ function createAssistantRoute({ config, client, assistant, refuseUnlessLocalActi
     };
     res.writeHead(200, { 'Content-Type': 'application/x-ndjson; charset=utf-8', 'Cache-Control': 'no-store', ...SECURITY_HEADERS });
     res.flushHeaders();
-    try { await assistant.answer(question.trim(), { emit, signal: controller.signal, memory, workingHours, filterTools: BUILT_IN.has(config.provider) }); lastStatus.reachable = true; }
+    // Only the built-in model filters tools; hosted providers receive every tool.
+    try { await assistant.answer(question.trim(), { emit, signal: controller.signal, memory, workingHours, filterTools: config.provider === 'llamacpp' }); lastStatus.reachable = true; }
     catch (e) {
       if (!controller.signal.aborted) {
         const offline = e instanceof ServiceUnreachable || client.offline;

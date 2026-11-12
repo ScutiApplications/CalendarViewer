@@ -3,7 +3,7 @@
 const crypto = require('node:crypto');
 const logic = require('../shared/alert-logic');
 const { writeJsonAtomic, readJson } = require('./json-store');
-const idFor = occ => occ.key + '|' + occ.start;
+const { occurrenceKey } = logic;
 
 function createReminderStore({ file, now = Date.now }) {
   let state = { pending: [], tickets: [], deliveries: [] };
@@ -26,7 +26,7 @@ function createReminderStore({ file, now = Date.now }) {
       throw new Error('A five-minute snooze must end before the event starts.');
     }
     const item = { key: occ.key, start: occ.start, dueAt, sourceKeys: occ.sourceKeys };
-    commit({ ...state, pending: [...state.pending.filter(s => idFor(s) !== idFor(occ)), item] });
+    commit({ ...state, pending: [...state.pending.filter(s => occurrenceKey(s) !== occurrenceKey(occ)), item] });
     return item;
   }
   function issueTicket(occ) {
@@ -42,13 +42,13 @@ function createReminderStore({ file, now = Date.now }) {
   }
   function takeDue(occurrences, rules, silent = false) {
     const t = now(), due = [], pending = [];
-    const current = new Map(occurrences.map(o => [idFor(o), o]));
+    const current = new Map(occurrences.map(o => [occurrenceKey(o), o]));
     for (const item of state.pending) {
       if (item.start <= t || rules.global.muted) continue;
-      const occ = current.get(idFor(item));
+      const occ = current.get(occurrenceKey(item));
       if (occ && !logic.isAlertable(rules, occ)) continue;
       if (!occ || silent || item.dueAt > t) { pending.push(item); continue; }
-      due.push({ id: idFor(item) + '|' + item.dueAt, occ, deliveredAt: t });
+      due.push({ id: occurrenceKey(item) + '|' + item.dueAt, occ, deliveredAt: t });
     }
     if (due.length || pending.length !== state.pending.length) commit({ ...state, pending, deliveries: [...state.deliveries, ...due] });
     return due;

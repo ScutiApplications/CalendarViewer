@@ -1,5 +1,4 @@
 // Alert settings sync with the background server, its status, and fired-alert memory.
-// ---- Alerts: persistence, editors, scheduler, delivery ----
 function saveAlertRules() {
   store.set(ALERT_RULES_KEY, JSON.stringify(alertRules), 'Could not save alert settings');
   scheduleAlertSync();
@@ -41,12 +40,12 @@ function applyServerStatus(status) {
   serverToasts = !!status.serverToasts;
   backgroundReachable = true;
   backgroundFeedHealth = new Map((status.feeds || []).map(f => [f.id, f]));
-  (status.snoozes?.pending || []).forEach(s => snoozedOccurrences.set(s.key + '|' + s.start, s.dueAt));
+  (status.snoozes?.pending || []).forEach(s => snoozedOccurrences.set(occurrenceKey(s), s.dueAt));
   for (const reminder of status.snoozes?.deliveries || []) {
     const id = 'snooze|' + reminder.id;
     if (!(id in firedAlerts) && !restoringBackup) {
       firedAlerts[id] = reminder.occ.start;
-      snoozedOccurrences.set(reminder.occ.key + '|' + reminder.occ.start, reminder.deliveredAt);
+      snoozedOccurrences.set(occurrenceKey(reminder.occ), reminder.deliveredAt);
       deliverAlert(reminder.occ, Date.now());
       saveFiredAlerts();
     }

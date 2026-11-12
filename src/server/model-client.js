@@ -8,9 +8,9 @@ class ServiceUnreachable extends Error {
   constructor(message = 'Model service unreachable.', code = '') { super(message); this.code = code; }
 }
 function createModelClient({ provider: initialProvider = 'llamacpp', model: initialModel = '', url: initialUrl = '', token: initialToken = '', fallback: initialFallback = '', engine = null, fetch: fetchImpl = global.fetch, timeoutMs = 240000 } = {}) {
-  // `failures` counts the chosen provider; `backupFailures` the built-in model that can stand in for a hosted one.
-  let failures = 0, backupFailures = 0, url = initialUrl, token = initialToken, provider = initialProvider, model = initialModel, fallback = initialFallback;
-  const lanes = { primary: { get n() { return failures; }, set n(v) { failures = v; } }, backup: { get n() { return backupFailures; }, set n(v) { backupFailures = v; } } };
+  let url = initialUrl, token = initialToken, provider = initialProvider, model = initialModel, fallback = initialFallback;
+  // Each provider lane owns its failure count so a failed primary cannot latch off its backup.
+  const lanes = { primary: { n: 0 }, backup: { n: 0 } };
   // One non-streaming request through a provider adapter; the answer arrives whole. `lane` picks the failure counter.
   async function adaptedChat(target, payload, { signal } = {}, lane = 'primary') {
     const counter = lanes[lane];
@@ -58,11 +58,11 @@ function createModelClient({ provider: initialProvider = 'llamacpp', model: init
   const mark = reply => Object.assign(reply, { backup: true });
   return {
     // Offline only when the chosen provider is latched off and no working backup remains.
-    get offline() { return failures >= 3 && !(canFallBack() && backupFailures < 3); },
+    get offline() { return lanes.primary.n >= 3 && !(canFallBack() && lanes.backup.n < 3); },
     // New connection settings also clear the offline latch.
     configure: next => {
       provider = next.provider || 'llamacpp'; model = next.model || ''; url = next.url || ''; token = next.token || '';
-      fallback = next.fallback || ''; failures = 0; backupFailures = 0;
+      fallback = next.fallback || ''; lanes.primary.n = 0; lanes.backup.n = 0;
     },
     // With a backup enabled, a provider that is down or has no usable key reports the built-in model instead.
     async health() {
