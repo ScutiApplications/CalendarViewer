@@ -3,7 +3,7 @@ const { readBody, send, sendJson, SECURITY_HEADERS } = require('./http');
 const { ServiceError, ServiceUnreachable, createModelClient } = require('./model-client');
 const { assistantConfig, assistantLocks } = require('./assistant-config');
 const { PROVIDERS, isHosted, needsKey } = require('./providers');
-// Tool filtering (Laya or the model's own pick) only runs for the built-in models; big hosted models get every tool.
+// Tool filtering (the model's own pick) only runs for the built-in models; big hosted models get every tool.
 const BUILT_IN = new Set(['llamacpp']);
 // Remembered chat sent by the page: an optional summary and up to 3 recent exchanges. Throws when the shape is wrong; long text is cut.
 function cleanMemory(value) {

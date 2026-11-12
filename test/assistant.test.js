@@ -163,19 +163,8 @@ test('"remaining" questions get only events that have not finished', async () =>
   assert.equal(output.find(v => v.type === 'sources').data.events.length, 1);
 });
 
-test('a tool router limits the tools sent to the model; failures send every tool', async () => {
-  const { createToolRouter } = require('../src/server/tool-router');
+test('a tool router limits the tools sent to the model', async () => {
   const defs = [{ name: 'a', description: 'A' }, { name: 'b', description: 'B' }, { name: 'c', description: 'C' }];
-  const calls = [];
-  const ok = createToolRouter({ url: 'http://127.0.0.1:9120', token: 't', fetch: async (url, opts) => { calls.push([url, opts.headers['X-Internal-Token'], JSON.parse(opts.body)]); return new Response(JSON.stringify({ answers: { a: false, b: true, c: false } })); } });
-  assert.deepEqual((await ok.select('q', defs)).map(t => t.name), ['b']);
-  assert.equal(calls[0][0], 'http://127.0.0.1:9120/v1/ask'); assert.equal(calls[0][1], 't'); assert.equal(calls[0][2].questions.a.type, 'boolean');
-  const none = createToolRouter({ url: 'http://x', fetch: async () => new Response(JSON.stringify({ answers: { a: false } })) });
-  assert.equal((await none.select('q', defs)).length, 3);
-  let n = 0;
-  const down = createToolRouter({ url: 'http://x', fetch: async () => { n++; throw new Error('off'); } });
-  for (let i = 0; i < 5; i++) assert.equal((await down.select('q', defs)).length, 3);
-  assert.equal(n, 3);
   const seen = []; let turn = 0;
   const client = { chat: async payload => { seen.push(payload.tools.map(t => t.name)); return { finish_reason: 'stop', content: 'hi' }; } };
   await createAssistant({ client, router: { select: async (_q, list) => list.slice(0, 1) }, tools: { definitions: defs.map(d => ({ ...d, inputSchema: { type: 'object', properties: {} } })), execute: async () => ({}) } }).answer('hello', { emit() {} });

@@ -13,10 +13,10 @@ const { createStartupService } = require('./startup');
 const { createBackupService } = require('./backups');
 const { createMcpHandler } = require('./mcp');
 const { createCalendarTools } = require('./calendar-tools');
-const { assistantConfig } = require('./assistant-config');
+const { assistantConfig, savedSettings } = require('./assistant-config');
 const { createModelClient } = require('./model-client');
 const { createAssistant } = require('./assistant');
-const { createToolRouter, createModelRouter } = require('./tool-router');
+const { createModelRouter } = require('./tool-router');
 const { createAssistantRoute } = require('./assistant-route');
 const { createLlamaEngine } = require('./llama-engine');
 const { normalizeFeedUrl } = require('../shared/alert-logic.js');
@@ -61,15 +61,15 @@ const refuseUnlessLocalAction = (req, res) => !isLocalAction(req) && (send(res, 
 
 // Invalid optional settings disable only the assistant, leaving the calendar operational.
 const ASSISTANT_FILE = path.join(DATA_DIR, 'assistant-config.json');
-const savedAssistant = readJson(ASSISTANT_FILE, {});
+const savedAssistant = savedSettings(readJson(ASSISTANT_FILE, {}));
 let modelConfig;
 try { modelConfig = assistantConfig(savedAssistant); }
 catch { modelConfig = { enabled: false, provider: 'llamacpp', url: '' }; console.warn('Assistant disabled: invalid model configuration.'); }
 // The self-contained built-in model keeps its program and weights under data/llama; nothing is downloaded until the user asks.
 const llamaEngine = createLlamaEngine({ dir: path.join(DATA_DIR, 'llama') });
 const modelClient = createModelClient({ ...modelConfig, engine: llamaEngine });
-// Laya, when configured, picks the tools; otherwise the model itself does, so tool filtering works with nothing extra installed.
-const toolRouter = process.env.LAYA_URL ? createToolRouter({ url: process.env.LAYA_URL, token: process.env.LAYA_TOKEN || '' }) : createModelRouter({ client: modelClient });
+// The model itself picks the tools it needs, so tool filtering works with nothing extra installed.
+const toolRouter = createModelRouter({ client: modelClient });
 const assistant = createAssistant({ client: modelClient, tools: createCalendarTools({ sources: alerts.sources }), router: toolRouter });
 const assistantRoute = createAssistantRoute({ config: modelConfig, client: modelClient, engine: llamaEngine, assistant, refuseUnlessLocalAction, saved: savedAssistant, persist: value => writeJsonAtomic(ASSISTANT_FILE, value, { space: 2, mode: 0o600 }) });
 

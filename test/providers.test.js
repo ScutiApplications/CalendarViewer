@@ -90,9 +90,14 @@ test('configuration for hosted providers uses default models, saved keys and env
   assert.throws(() => assistantConfig({ provider: 'x' }, {}), /Provider/);
   assert.throws(() => assistantConfig({ provider: 'gemini', models: { gemini: 'a b' } }, {}), /Model name/);
 });
-test('the built-in model is the default, and retired providers (Scuti, Ollama) now mean it', () => {
-  for (const provider of [undefined, 'scuti', 'local', 'llamacpp']) assert.equal(assistantConfig({ provider }, {}).provider, 'llamacpp');
-  assert.equal(assistantConfig({ provider: 'openai', fallback: 'local' }, {}).fallback, 'llamacpp');
+test('saved settings keep known fields only and drop a provider that no longer exists', () => {
+  const { savedSettings } = require('../src/server/assistant-config');
+  assert.deepEqual(savedSettings({ enabled: true, url: 'http://x', token: 't', provider: 'scuti' }), { enabled: true });
+  assert.deepEqual(savedSettings({ provider: 'openai', fallback: 'llamacpp', keys: { openai: 'k' }, models: { openai: 'm' } }), { provider: 'openai', fallback: 'llamacpp', keys: { openai: 'k' }, models: { openai: 'm' } });
+  assert.deepEqual(savedSettings({ provider: 'constructor' }), {});
+});
+test('the built-in model is the default', () => {
+  for (const provider of [undefined, 'llamacpp']) assert.equal(assistantConfig({ provider }, {}).provider, 'llamacpp');
   assert.equal(assistantConfig({ provider: 'openai', fallback: true }, {}).fallback, 'llamacpp');
   assert.equal(assistantConfig({ provider: 'llamacpp', fallback: 'llamacpp' }, {}).fallback, '');
 });

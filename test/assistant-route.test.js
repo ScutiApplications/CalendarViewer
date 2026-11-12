@@ -79,6 +79,7 @@ test('real server wiring protects routes, defaults to the built-in model and rep
   const fs = require('node:fs'), os = require('node:os'), path = require('node:path');
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'assistant-integration-'));
   t.after(() => fs.rmSync(dataDir, { recursive: true, force: true }));
+  fs.writeFileSync(path.join(dataDir, 'assistant-config.json'), '{"provider":"scuti"}'); // unknown saved provider falls back to the built-in model
   const child = spawn(process.execPath, [path.resolve('src/server/server.js')], { env: { ...process.env, PORT: '3992', CALENDAR_ASSISTANT_ENABLED: '1', ASSISTANT_PROVIDER: '', CALENDAR_DATA_DIR: dataDir }, stdio: 'pipe' });
   t.after(() => child.kill());
   await new Promise((resolve, reject) => { child.stdout.on('data', d => { if (String(d).includes('ICS viewer')) resolve(); }); child.on('error', reject); child.on('exit', code => reject(new Error('Server exited ' + code))); });
