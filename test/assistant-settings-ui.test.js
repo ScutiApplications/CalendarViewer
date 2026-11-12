@@ -43,7 +43,6 @@ test('settings modal opens with native focus and restores its launcher on close'
   element('assistant-provider').onchange();
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(element('assistant-token-row').hidden, true);
-  assert.equal(element('assistant-fallback-row').hidden, true);
   assert.equal(element('assistant-local-row').hidden, false);
   assert.equal(element('assistant-local-pull').hidden, true);
   builtinState = { supported: true, installed: true, accelerationReady: false, backend: 'cpu' };

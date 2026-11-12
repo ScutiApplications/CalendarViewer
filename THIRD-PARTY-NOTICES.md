@@ -10,6 +10,8 @@ The application's MIT licence does not replace these components' licences. Licen
 
 ## Distribution details
 
+Optional built-in setup downloads [Laya](https://github.com/NandhaKishorM/laya) and its [typed-decisions checkpoint](https://huggingface.co/convaiinnovations/laya/tree/main/typed-decisions) (Apache-2.0), [uv](https://github.com/astral-sh/uv) (MIT/Apache-2.0), CPython (PSF), PyTorch (BSD-style), Transformers (Apache-2.0) and their locked dependencies. These are downloaded into private application data rather than included in the source ZIP. Versions and package hashes are recorded in `src/laya/pyproject.toml` and `src/laya/uv.lock`; checkpoint revision and file hashes are recorded in `src/laya/model.json`. Downloaded distributions retain their own license files.
+
 `vendor/fullcalendar.min.js` is the unmodified 6.1.15 global bundle from [jsDelivr](https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js), with its upstream copyright header retained. Its embedded `fcicons` font is part of FullCalendar's MIT-licensed source, not an external font service.
 
 `vendor/ical.min.js` exactly matched the upstream [1.5.0 minified build](https://cdn.jsdelivr.net/npm/ical.js@1.5.0/build/ical.min.js) before this review. That upstream minified file omitted its licence header. We restored the MPL notice and copyright from the release's [module source](https://github.com/mozilla-comm/ical.js/blob/v1.5.0/lib/ical/module.js); executable code is unchanged. The corresponding MPL source is available at the source release linked above, and the full MPL-2.0 licence is bundled here.

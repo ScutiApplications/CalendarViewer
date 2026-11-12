@@ -6,7 +6,7 @@ const fail = (status, detail) => new (require('./model-client').ServiceError)(st
 // Model ids are defaults; the settings form can override them.
 const PROVIDERS = {
   // MiniCPM5-2B GGUF run by llama.cpp's own server program, which CalendarViewer downloads and starts itself (see llama-engine.js).
-  llamacpp: { label: 'Built-in MiniCPM5-2B (self-contained)', model: 'MiniCPM5-2B-Q4_K_M', origin: 'http://127.0.0.1', env: null },
+  llamacpp: { label: 'Built-in Laya + MiniCPM5-2B', model: 'MiniCPM5-2B-Q4_K_M', origin: 'http://127.0.0.1', env: null },
   anthropic: { label: 'Anthropic', model: 'claude-haiku-5-5', origin: 'https://api.anthropic.com', env: 'ANTHROPIC_API_KEY' },
   openai: { label: 'OpenAI', model: 'luna-6', origin: 'https://api.openai.com', env: 'OPENAI_API_KEY' },
   gemini: { label: 'Google Gemini', model: 'gemini-3.8-flash', origin: 'https://generativelanguage.googleapis.com', env: 'GEMINI_API_KEY' }

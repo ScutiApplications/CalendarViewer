@@ -17,7 +17,7 @@ function cleanHours(value) {
   return value && time.test(value.start) && time.test(value.end) && value.start !== value.end ? { start: value.start, end: value.end } : undefined;
 }
 function createAssistantRoute({ config, client, assistant, refuseUnlessLocalAction, saved = {}, persist = () => {}, env = process.env, createClient = createModelClient, engine = null }) {
-  let busy = false, lastStatus = { reachable: false, model: null };
+  let busy = false, lastStatus = { reachable: false, model: null }, activeController = null;
   // The token is write-only: it is never sent to the browser.
   const hostedNames = Object.keys(PROVIDERS).filter(isHosted);
   // Whether a credential exists for each provider (saved or from the environment), without revealing it.
@@ -37,9 +37,6 @@ function createAssistantRoute({ config, client, assistant, refuseUnlessLocalActi
     if (typeof body.enabled === 'boolean') next.enabled = body.enabled;
     if (body.cpuThreads !== undefined) next.cpuThreads = body.cpuThreads;
     if (typeof body.provider === 'string' && body.provider) next.provider = body.provider;
-    // The backup is '' or 'llamacpp' (the built-in model); a plain true means the built-in model.
-    if (typeof body.fallback === 'boolean') next.fallback = body.fallback ? 'llamacpp' : '';
-    else if (typeof body.fallback === 'string' && ['', 'llamacpp'].includes(body.fallback)) next.fallback = body.fallback;
     const provider = next.provider || 'llamacpp';
     if (typeof body.token === 'string' && needsKey(provider)) {
       next.keys = { ...saved.keys };
@@ -95,8 +92,11 @@ function createAssistantRoute({ config, client, assistant, refuseUnlessLocalActi
     try { persist(next); } catch { return send(res, 500, 'Could not save assistant settings.'); }
     for (const key of Object.keys(saved)) delete saved[key];
     Object.assign(saved, next);
+    const providerChanged = config.provider !== applied.provider;
+    if (providerChanged) activeController?.abort();
     Object.assign(config, applied);
     engine?.configure?.({ cpuThreads: applied.cpuThreads });
+    if (providerChanged || applied.provider !== 'llamacpp') engine?.stop?.();
     client.configure?.({ provider: applied.provider, model: applied.model, url: applied.url, token: applied.token, fallback: applied.fallback });
     lastStatus = { reachable: false, model: null };
     return sendJson(res, 200, view());
@@ -124,6 +124,7 @@ function createAssistantRoute({ config, client, assistant, refuseUnlessLocalActi
   async function handle(req, res) {
     if (refuseUnlessLocalAction(req, res)) return;
     const route = req.url.split('?')[0];
+    if (route.startsWith('/api/assistant/builtin') && config.provider !== 'llamacpp') return send(res, 403, 'Select the built-in provider to download or use local models.');
     if (route === '/api/assistant/config') {
       if (req.method === 'GET') return sendJson(res, 200, view());
       if (req.method === 'PUT') return saveSettings(req, res);
@@ -157,7 +158,7 @@ function createAssistantRoute({ config, client, assistant, refuseUnlessLocalActi
     } catch (e) { return send(res, e.status === 413 ? 413 : 400, 'Send a question of 1–2000 characters in a JSON object.'); }
     if (busy) return send(res, 429, 'Assistant is busy.');
     busy = true;
-    const controller = new AbortController();
+    const controller = activeController = new AbortController();
     const cancel = () => { if (!res.writableEnded) controller.abort(); };
     res.on('close', cancel);
     let pending = Promise.resolve(), queuedBytes = 0;
@@ -186,7 +187,7 @@ function createAssistantRoute({ config, client, assistant, refuseUnlessLocalActi
             /token|empty|calendar|limit|invalid tool/i.test(e.message) ? e.message : 'Assistant could not finish this answer. Please try again.';
         emit({ type: 'error', message, offline });
       }
-    } finally { await pending; res.removeListener('close', cancel); busy = false; res.end(); }
+    } finally { await pending; res.removeListener('close', cancel); activeController = null; busy = false; res.end(); }
   }
   return handle;
 }

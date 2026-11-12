@@ -2,17 +2,15 @@
 // Nothing is downloaded until startPull() is called (the sidebar's Download button). Every download is checked against the
 // SHA-256 that GitHub (release asset digest) and Hugging Face (LFS object id) publish. The server program runs on 127.0.0.1
 // with a random port and a random key, starts on the first question and stops after a while without use.
-const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const net = require('node:net');
 const os = require('node:os');
 const { spawn } = require('node:child_process');
-const { Transform, Readable } = require('node:stream');
-const { pipeline } = require('node:stream/promises');
 const { setTimeout: delay } = require('node:timers/promises');
 const { extractZip } = require('./archive');
+const { downloadVerified, fetchJson } = require('./model-download');
 const { detectDevice: probeDevice } = require('./llama-hardware');
 const { cpuThreadsFor, cpuThreadLimit } = require('./assistant-config');
 
@@ -41,8 +39,8 @@ async function freePort() {
     server.listen(0, '127.0.0.1', () => { const { port } = server.address(); server.close(() => resolve(port)); });
   });
 }
-const run = (command, args) => new Promise((resolve, reject) => {
-  const child = spawn(command, args, { stdio: 'ignore', windowsHide: true });
+const run = (command, args, signal) => new Promise((resolve, reject) => {
+  const child = spawn(command, args, { stdio: 'ignore', windowsHide: true, signal });
   child.once('error', reject);
   child.once('exit', code => code === 0 ? resolve() : reject(new Error(`${command} exited with ${code}.`)));
 });
@@ -56,6 +54,7 @@ function createLlamaEngine({ dir, fetch: fetchImpl = global.fetch, spawn: spawnI
   let job = null, starting = null, idle = null, current = null;
   let selection = null, selectedDevice = null, gpuFailed = false, accelerationError = '', launchController = null;
   let threads = cpuThreadsFor(cpuThreads);
+  let setupController = null;
 
   // The program counts as installed only when its folder carries the .ok marker written after a complete unpack.
   async function search(folder, depth = 0) {
@@ -85,30 +84,8 @@ function createLlamaEngine({ dir, fetch: fetchImpl = global.fetch, spawn: spawnI
       pulling: job && !job.done ? { percent: job.percent, status: job.status } : null, error: job?.error || '' };
   }
 
-  async function json(url) {
-    const response = await fetchImpl(url, { headers: HEADERS, signal: AbortSignal.timeout(20000) });
-    if (!response.ok) throw new Error(`${new URL(url).host} answered ${response.status}.`);
-    return response.json();
-  }
-  // Streams to a .part file while hashing; the file only gets its real name when the checksum matches.
-  async function download(url, target, sha256, maxBytes, onBytes) {
-    const response = await fetchImpl(url, { headers: { 'User-Agent': 'CalendarViewer' }, redirect: 'follow', signal: AbortSignal.timeout(2 * 60 * 60 * 1000) });
-    if (!response.ok || !response.body) throw new Error(`Download failed (${response.status}).`);
-    const total = Number(response.headers.get('content-length')) || 0;
-    if (total > maxBytes) throw new Error('The download is larger than allowed.');
-    await fsp.mkdir(path.dirname(target), { recursive: true });
-    const part = target + '.part', hash = crypto.createHash('sha256');
-    let got = 0;
-    try {
-      await pipeline(Readable.fromWeb(response.body), new Transform({ transform(chunk, _enc, done) {
-        got += chunk.length;
-        if (got > maxBytes) return done(new Error('The download is larger than allowed.'));
-        hash.update(chunk); onBytes(got, total); done(null, chunk);
-      } }), fs.createWriteStream(part));
-      if (hash.digest('hex') !== sha256.toLowerCase()) throw new Error('The download did not match its published checksum.');
-      await fsp.rename(part, target);
-    } catch (e) { await fsp.rm(part, { force: true }); throw e; }
-  }
+  const json = url => fetchJson(url, { headers: HEADERS, fetch: fetchImpl, signal: setupController?.signal });
+  const download = (url, target, sha256, maxBytes, onBytes) => downloadVerified({ url, target, sha256, maxBytes, onBytes, fetch: fetchImpl, signal: setupController?.signal });
 
   async function installProgram(suffix = assetSuffix, folder = engineDir) {
     job.status = suffix === gpuSuffix ? 'Downloading the GPU runtime' : 'Downloading the llama.cpp program';
@@ -120,14 +97,16 @@ function createLlamaEngine({ dir, fetch: fetchImpl = global.fetch, spawn: spawnI
     const file = path.join(dir, 'downloads', asset.name);
     await download(asset.browser_download_url, file, sha, LIMITS.binary, (got, total) => { job.percent = total ? Math.floor(got / total * 4) : 0; });
     job.status = 'Unpacking the program'; job.percent = 4;
+    setupController.signal.throwIfAborted();
     const relative = path.relative(path.resolve(dir), path.resolve(folder));
     if (!relative || relative.startsWith('..') || path.isAbsolute(relative)) throw new Error('Invalid runtime folder.');
     await fsp.rm(folder, { recursive: true, force: true });
     await fsp.mkdir(folder, { recursive: true });
-    if (asset.name.endsWith('.zip')) await extractZip(file, folder); else await run('tar', ['-xzf', file, '-C', folder]);
+    if (asset.name.endsWith('.zip')) await extractZip(file, folder); else await run('tar', ['-xzf', file, '-C', folder], setupController.signal);
     await fsp.rm(file, { force: true });
     const binary = await search(folder);
     if (!binary) throw new Error('The program was not found in the download.');
+    setupController.signal.throwIfAborted();
     if (platform !== 'win32') await fsp.chmod(binary, 0o755);
     await fsp.writeFile(path.join(folder, '.ok'), RELEASE);
   }
@@ -144,25 +123,29 @@ function createLlamaEngine({ dir, fetch: fetchImpl = global.fetch, spawn: spawnI
     if (!assetSuffix) return { ...(await state()), error: 'This system has no ready-made llama.cpp build in the app.' };
     if (job && !job.done) return state();
     const mine = job = { done: false, percent: 0, status: 'Starting', error: '' };
+    const controller = setupController = new AbortController();
     (async () => {
       try {
         if (!(await findBinary())) await installProgram();
+        controller.signal.throwIfAborted();
         if (gpuSuffix && !(await findGpuBinary())) {
           try { await installProgram(gpuSuffix, gpuDir); accelerationError = ''; }
-          catch (error) { accelerationError = 'GPU runtime unavailable; using CPU. ' + String(error.message).slice(0, 160); }
+          catch (error) { if (controller.signal.aborted) throw error; accelerationError = 'GPU runtime unavailable; using CPU. ' + String(error.message).slice(0, 160); }
         }
         selection = null;
         mine.percent = 5;
+        controller.signal.throwIfAborted();
         if (!(await exists(modelFile))) await installModel();
         mine.percent = 100; mine.status = 'Done';
       } catch (e) { mine.error = (e.name === 'TimeoutError' ? 'The download took too long.' : String(e.cause?.code || e.message)).slice(0, 200); }
-      finally { mine.done = true; }
+      finally { mine.done = true; setupController = null; }
     })();
     return state();
   }
 
   function stop() {
     clearTimeout(idle);
+    setupController?.abort();
     launchController?.abort();
     const old = current; current = null;
     old?.child.kill();

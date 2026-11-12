@@ -1,5 +1,5 @@
 // Dependency-free model transport: the built-in llama.cpp model or a hosted provider. No request bodies or credentials are logged.
-const { PROVIDERS, needsKey, adapters, errorStatus, errorDetail } = require('./providers');
+const { PROVIDERS, adapters, errorStatus, errorDetail } = require('./providers');
 class ServiceError extends Error {
   constructor(status, detail = '') { super(`Model service error (${status})${detail ? ': ' + detail : ''}`); this.status = status; this.detail = detail; }
 }
@@ -7,13 +7,11 @@ class ServiceUnreachable extends Error {
   // code: why the request failed (ECONNREFUSED, ENOTFOUND, timeout, ...), shown to the user so a setup problem can be diagnosed.
   constructor(message = 'Model service unreachable.', code = '') { super(message); this.code = code; }
 }
-function createModelClient({ provider: initialProvider = 'llamacpp', model: initialModel = '', url: initialUrl = '', token: initialToken = '', fallback: initialFallback = '', engine = null, fetch: fetchImpl = global.fetch, timeoutMs = 240000 } = {}) {
-  let url = initialUrl, token = initialToken, provider = initialProvider, model = initialModel, fallback = initialFallback;
-  // Each provider lane owns its failure count so a failed primary cannot latch off its backup.
-  const lanes = { primary: { n: 0 }, backup: { n: 0 } };
-  // One non-streaming request through a provider adapter; the answer arrives whole. `lane` picks the failure counter.
-  async function adaptedChat(target, payload, { signal } = {}, lane = 'primary') {
-    const counter = lanes[lane];
+function createModelClient({ provider: initialProvider = 'llamacpp', model: initialModel = '', url: initialUrl = '', token: initialToken = '', engine = null, fetch: fetchImpl = global.fetch, timeoutMs = 240000 } = {}) {
+  let url = initialUrl, token = initialToken, provider = initialProvider, model = initialModel;
+  const counter = { n: 0 };
+  // Only the explicitly selected provider may answer. Hosted failures never start local models.
+  async function adaptedChat(target, payload, { signal } = {}) {
     if (counter.n >= 3) throw new ServiceUnreachable('Assistant offline until the calendar server restarts.');
     signal?.throwIfAborted();
     const abort = new AbortController();
@@ -50,46 +48,19 @@ function createModelClient({ provider: initialProvider = 'llamacpp', model: init
   // The built-in model is ready once its program and weights are on this PC.
   const builtinHealth = async () => ({ ready: !!engine && (await engine.state()).installed, model: PROVIDERS.llamacpp.model });
   const primary = () => ({ provider, model, url, token });
-  const backupTarget = () => ({ provider: 'llamacpp', model: PROVIDERS.llamacpp.model, url: '', token: '' });
-  // Only a hosted provider can fall back, and only to the built-in model.
-  const canFallBack = () => !!fallback && provider !== 'llamacpp';
   // A hosted provider has no health endpoint; a key is all that can be checked without spending tokens.
   const primaryHealth = async () => provider === 'llamacpp' ? builtinHealth() : { ready: !!token, model: model || PROVIDERS[provider].model };
-  const mark = reply => Object.assign(reply, { backup: true });
   return {
-    // Offline only when the chosen provider is latched off and no working backup remains.
-    get offline() { return lanes.primary.n >= 3 && !(canFallBack() && lanes.backup.n < 3); },
+    get offline() { return counter.n >= 3; },
     // New connection settings also clear the offline latch.
     configure: next => {
       provider = next.provider || 'llamacpp'; model = next.model || ''; url = next.url || ''; token = next.token || '';
-      fallback = next.fallback || ''; lanes.primary.n = 0; lanes.backup.n = 0;
+      counter.n = 0;
     },
-    // With a backup enabled, a provider that is down or has no usable key reports the built-in model instead.
-    async health() {
-      let failure, notReady;
-      try {
-        const result = await primaryHealth();
-        if (result.ready || !canFallBack()) return result;
-        notReady = result;
-      } catch (e) { if (!canFallBack()) throw e; failure = e; }
-      try { const result = await builtinHealth(); if (result.ready) return { ...result, backup: true }; } catch { /* keep the primary's failure */ }
-      if (notReady) return notReady;
-      throw failure;
-    },
+    health: primaryHealth,
     async chat(payload, options) {
       if (payload.tools !== undefined && payload.schema !== undefined) throw new Error('tools and schema cannot be combined.');
-      if (!canFallBack()) return adaptedChat(primary(), payload, options, 'primary');
-      try {
-        // A hosted provider without a key would only fail; skip it.
-        if (needsKey(provider) && !token) throw new ServiceError(401, 'No API key set.');
-        return await adaptedChat(primary(), payload, options, 'primary');
-      } catch (e) {
-        if (options?.signal?.aborted || e.name === 'AbortError') throw e;
-        // Only provider-side failures fall back; a bad request would fail on the backup too.
-        const providerSide = e instanceof ServiceUnreachable || (e instanceof ServiceError && (e.status === 401 || e.status === 403 || e.status === 429 || e.status >= 500));
-        if (!providerSide) throw e;
-        return mark(await adaptedChat(backupTarget(), payload, options, 'backup'));
-      }
+      return adaptedChat(primary(), payload, options);
     }
   };
 }

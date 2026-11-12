@@ -163,7 +163,7 @@
       <label class="sb-switch"><span>Enable assistant<small>Show Ask Calendar in your calendar view.</small></span><input type="checkbox" id="assistant-enabled" role="switch"></label>
       <div class="assistant-provider-field"><label for="assistant-provider">AI provider</label>
       <select id="assistant-provider">
-        <option value="llamacpp">Built-in MiniCPM5-2B (self-contained)</option>
+        <option value="llamacpp">Built-in Laya + MiniCPM5-2B</option>
         <option value="anthropic">Anthropic (Claude Haiku 5.5)</option>
         <option value="openai">OpenAI (Luna 6)</option>
         <option value="gemini">Google Gemini (3.8 Flash)</option>
@@ -176,17 +176,16 @@
         <label for="assistant-model">Model name</label>
         <input type="text" id="assistant-model" autocomplete="off" spellcheck="false">
       </div>
-      <label class="sb-switch" id="assistant-fallback-row"><span>Use built-in MiniCPM5-2B as backup</span><input type="checkbox" id="assistant-fallback" role="switch"></label>
       <div id="assistant-local-row" hidden>
         <p id="assistant-local-state" role="status" aria-live="polite"></p>
         <label for="assistant-cpu-threads">CPU threads</label>
         <input id="assistant-cpu-threads" type="number" min="0" max="0" step="1" value="0" required aria-describedby="assistant-cpu-threads-help">
         <small id="assistant-cpu-threads-help">0 = automatic. Used only in CPU mode, including CPU fallback. Changes apply when the model next starts; restart CalendarViewer to apply immediately.</small>
-        <button id="assistant-local-pull" type="button">Download engine and model</button>
+        <button id="assistant-local-pull" type="button">Download Laya and MiniCPM</button>
       </div>
 
 
-    <p id="assistant-builtin-note" hidden>The self-contained model runs on this PC and sends nothing off it. Pressing <strong>Download</strong> fetches the official llama.cpp runtimes from GitHub and the MiniCPM5-2B weights from Hugging Face, and checks their published checksums. It detects compatible GPUs automatically and uses the CPU when no GPU is usable. It starts on your first question and stops when idle.</p>
+    <p id="assistant-builtin-note" hidden>Both models run on this PC. <strong>Download Laya and MiniCPM</strong> installs Laya for tool selection, MiniCPM5-2B for answers, and their private runtimes. No separate Python setup is needed. Downloads are checked against pinned checksums or the package lock. MiniCPM detects compatible GPUs automatically and uses CPU otherwise. Both models stop when idle and run only with this built-in provider selected.</p>
     <p id="assistant-hosted-note" hidden>Questions and calendar details are sent to the chosen provider over the internet, and their terms apply. Saved API keys are never shown again. The model name can be changed if your account uses a different one.</p>
   <div class="assistant-settings-footer"><p id="assistant-settings-state" role="status" aria-live="polite"></p><div class="assistant-actions"><button id="assistant-test" type="button">Test connection</button><button id="assistant-save" type="submit" class="primary">Save</button></div></div>
     </form>

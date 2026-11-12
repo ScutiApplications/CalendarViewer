@@ -147,7 +147,7 @@ test('the engine reports a program that quits while loading and a model that is 
   await assert.rejects(crashing.ensure(), /stopped while loading/);
 });
 
-test('the client answers through the engine, and as the backup when the chosen provider fails', async t => {
+test('the client uses the engine only for the explicitly selected built-in provider', async t => {
   const calls = [];
   const engine = { ensure: async () => ({ url: 'http://127.0.0.1:5555', key: 'k1' }), touch() { calls.push('touch'); }, state: async () => ({ installed: true }) };
   const fetch = async (url, options) => {
@@ -162,7 +162,7 @@ test('the client answers through the engine, and as the backup when the chosen p
   const reply = await own.chat(payload);
   assert.deepEqual([reply.finish_reason, reply.tool_calls[0].arguments, calls.includes('http://127.0.0.1:5555/v1/chat/completions'), calls.at(-1)], ['tool_calls', { start: 'today' }, true, 'touch']);
   const backed = createModelClient({ provider: 'openai', token: 'bad', fallback: 'llamacpp', engine, fetch });
-  assert.equal((await backed.chat(payload)).backup, true);
+  await assert.rejects(backed.chat(payload), error => error.status === 401);
   assert.deepEqual(await backed.health(), { ready: true, model: 'luna-6' });
   const broken = createModelClient({ provider: 'llamacpp', engine: { ensure: async () => { throw new Error('not downloaded'); }, touch() {}, state: async () => ({ installed: false }) }, fetch });
   await assert.rejects(broken.chat(payload), e => e instanceof ServiceUnreachable && e.code === 'engine' && /not downloaded/.test(e.message));
@@ -310,4 +310,17 @@ test('CPU thread limits do not override GPU inference', async t => {
   t.after(() => engine.stop());
   await engine.ensure();
   assert.equal(program.started[0].args.includes('-t'), false);
+});
+
+test('stopping built-in setup cancels MiniCPM download and does not start later download stages', async t => {
+  const dir = temp(t), fixture = downloadFixture(); let began;
+  const downloading = new Promise(resolve => { began = resolve; });
+  const engine = createLlamaEngine({ dir, platform: 'win32', arch: 'x64', fetch: async (url, options) => {
+    if (url.endsWith('win-cpu-x64.zip')) { began(); await new Promise(resolve => setTimeout(resolve, 30)); }
+    return fixture.fetch(url, options);
+  } });
+  await engine.startPull(); await downloading; engine.stop();
+  const done = await settle(engine);
+  assert.equal(done.installed, false);
+  assert.equal(fixture.seen.some(url => url.includes('huggingface')), false);
 });

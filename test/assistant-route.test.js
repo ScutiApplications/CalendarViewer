@@ -167,7 +167,7 @@ test('test connection for a hosted provider needs a key and probes with the type
   assert.deepEqual([probes.length, probes[0].provider, probes[0].token, probes[0].model], [1, 'gemini', 'k', 'gemini-x']);
 });
 
-test('the built-in model needs no key, can be a backup, and reports its download state', async t => {
+test('built-in setup needs no key and hosted providers cannot download or use local models', async t => {
   const calls = [];
   const engine = { state: async () => ({ supported: true, installed: false, pulling: null }), startPull: async () => { calls.push('pull'); return { pulling: { percent: 0, status: 'starting' } }; } };
   const extra = { route: { saved: {}, env: {}, engine, persist() {} } };
@@ -176,7 +176,10 @@ test('the built-in model needs no key, can be a backup, and reports its download
   const view = await (await put({ enabled: true, provider: 'llamacpp', token: 'ignored' })).json();
   assert.deepEqual([view.provider, view.tokenSet, view.fallback, view.tokenSets.llamacpp], ['llamacpp', false, '', false]);
   const backed = await (await put({ provider: 'openai', token: 'k', fallback: true })).json();
-  assert.deepEqual([backed.fallback, extra.configured.fallback], ['llamacpp', 'llamacpp']);
+  assert.deepEqual([backed.fallback, extra.configured.fallback], ['', '']);
+  assert.equal((await request('/api/assistant/builtin/pull', { method: 'POST' })).status, 403);
+  assert.equal((await request('/api/assistant/builtin')).status, 403);
+  assert.deepEqual(calls, []);
   assert.equal((await (await put({ provider: 'llamacpp', fallback: true })).json()).fallback, '');
   assert.deepEqual(await (await request('/api/assistant/builtin')).json(), { supported: true, installed: false, pulling: null });
   assert.equal((await request('/api/assistant/builtin/pull', { method: 'POST' })).status, 200);
@@ -242,4 +245,13 @@ test('CPU capacity comes from the server and cannot be overridden by a request',
   assert.equal((await (await request('/api/assistant/config')).json()).maxCpuThreads, max);
   const response = await request('/api/assistant/config', { method: 'PUT', body: JSON.stringify({ cpuThreads: max + 1, maxCpuThreads: max + 1 }) });
   assert.equal(response.status, 400);
+});
+
+test('changing provider aborts the answer that belonged to the previous provider', async t => {
+  let signal;
+  const { request } = await fixture(t, true, async (_question, options) => { signal = options.signal; await new Promise(resolve => setTimeout(resolve, 100)); });
+  const answer = await request('/api/assistant', { method: 'POST', body: '{"question":"hello"}' });
+  const saved = await request('/api/assistant/config', { method: 'PUT', body: '{"provider":"openai","token":"test-key"}' });
+  assert.equal(saved.status, 200); assert.equal(signal.aborted, true);
+  await answer.text();
 });

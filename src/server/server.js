@@ -16,9 +16,11 @@ const { createCalendarTools } = require('./calendar-tools');
 const { assistantConfig, savedSettings } = require('./assistant-config');
 const { createModelClient } = require('./model-client');
 const { createAssistant } = require('./assistant');
-const { createModelRouter } = require('./tool-router');
+const { createLayaRouter } = require('./tool-router');
 const { createAssistantRoute } = require('./assistant-route');
 const { createLlamaEngine } = require('./llama-engine');
+const { createLayaEngine } = require('./laya-engine');
+const { createBuiltinModels } = require('./builtin-models');
 const { normalizeFeedUrl } = require('../shared/alert-logic.js');
 
 const PORT = Number(process.env.PORT) || 3000;
@@ -66,10 +68,11 @@ let modelConfig;
 try { modelConfig = assistantConfig(savedAssistant); }
 catch { modelConfig = { enabled: false, provider: 'llamacpp', url: '' }; console.warn('Assistant disabled: invalid model configuration.'); }
 // The self-contained built-in model keeps its program and weights under data/llama; nothing is downloaded until the user asks.
-const llamaEngine = createLlamaEngine({ dir: path.join(DATA_DIR, 'llama'), cpuThreads: modelConfig.cpuThreads });
+const minicpm = createLlamaEngine({ dir: path.join(DATA_DIR, 'llama'), cpuThreads: modelConfig.cpuThreads });
+const laya = createLayaEngine({ dir: path.join(DATA_DIR, 'laya') });
+const llamaEngine = createBuiltinModels({ minicpm, laya, selected: () => modelConfig.provider === 'llamacpp' });
 const modelClient = createModelClient({ ...modelConfig, engine: llamaEngine });
-// The model itself picks the tools it needs, so tool filtering works with nothing extra installed.
-const toolRouter = createModelRouter({ client: modelClient });
+const toolRouter = createLayaRouter({ engine: laya, enabled: () => modelConfig.provider === 'llamacpp' });
 const assistant = createAssistant({ client: modelClient, tools: createCalendarTools({ sources: alerts.sources }), router: toolRouter });
 const assistantRoute = createAssistantRoute({ config: modelConfig, client: modelClient, engine: llamaEngine, assistant, refuseUnlessLocalAction, saved: savedAssistant, persist: value => writeJsonAtomic(ASSISTANT_FILE, value, { space: 2, mode: 0o600 }) });
 
@@ -178,6 +181,7 @@ server.listen(PORT, '127.0.0.1', () => {
 // stop the alert timer, finish in-flight requests, then exit.
 function shutdown() {
   alerts.stop();
+  llamaEngine.stop();
   server.close(() => process.exit(0));
   server.closeIdleConnections();
   setTimeout(() => process.exit(0), 5000).unref();

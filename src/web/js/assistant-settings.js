@@ -11,8 +11,6 @@ function initAssistantSettings() {
   const hostedNote = document.getElementById('assistant-hosted-note');
   const builtinNote = document.getElementById('assistant-builtin-note');
   const tokenRow = document.getElementById('assistant-token-row');
-  const fallback = document.getElementById('assistant-fallback');
-  const fallbackRow = document.getElementById('assistant-fallback-row');
   const localRow = document.getElementById('assistant-local-row');
   const localState = document.getElementById('assistant-local-state');
   const localPull = document.getElementById('assistant-local-pull');
@@ -40,7 +38,7 @@ function initAssistantSettings() {
   function render() {
     const name = provider.value, builtin = name === 'llamacpp', keyed = !builtin;
     modelRow.hidden = builtin; hostedNote.hidden = !keyed; builtinNote.hidden = !builtin;
-    tokenRow.hidden = builtin; fallbackRow.hidden = builtin;
+    tokenRow.hidden = builtin;
     checkLocal();
     const set = !!current.tokenSets[name], locked = !!current.locked.tokens[name];
     token.disabled = locked; token.value = '';
@@ -52,7 +50,7 @@ function initAssistantSettings() {
   }
   function show(data) {
     current = data;
-    enabled.checked = data.enabled; fallback.checked = !!data.fallback;
+    enabled.checked = data.enabled;
     cpuThreads.value = String(data.cpuThreads ?? 0);
     cpuThreads.max = String(data.maxCpuThreads ?? 0);
     document.getElementById('assistant-cpu-threads-help').textContent = `0 = automatic. This machine supports up to ${cpuThreads.max} CPU threads. Used only in CPU mode, including CPU fallback. Changes apply when the model next starts; restart CalendarViewer to apply immediately.`;
@@ -64,9 +62,7 @@ function initAssistantSettings() {
     return locked.length ? `Set by the server environment: ${locked.join(', ')}.` : '';
   }
   provider.onchange = () => { if (current) render(); };
-  fallback.onchange = () => checkLocal();
-  // The built-in model is needed when it is the chosen provider or the backup.
-  const engineInUse = () => provider.value === 'llamacpp' || fallback.checked;
+  const engineInUse = () => provider.value === 'llamacpp';
   // The panel shows whether the engine and the weights are present, and offers the download.
   let pollTimer = null;
   async function checkLocal() {
@@ -74,21 +70,24 @@ function initAssistantSettings() {
     localRow.hidden = !engineInUse();
     cpuThreads.disabled = localRow.hidden;
     if (localRow.hidden) return;
-    localPull.textContent = 'Download engine and model';
+    localPull.textContent = 'Download Laya and MiniCPM';
     try {
       const response = await fetch('/api/assistant/builtin', { headers });
+      if (response.status === 403) { localPull.disabled = true; throw new Error('Save Built-in as the selected provider first.'); }
       if (!response.ok) throw new Error(assistantStaleServer(response) || 'unavailable');
       const info = await response.json();
       const complete = info.installed && info.accelerationReady !== false;
       localPull.disabled = !!info.pulling || complete || !info.supported;
       localPull.hidden = complete;
       if (info.installed && !complete) localPull.textContent = 'Enable automatic GPU support';
+      else if (info.minicpmInstalled && !info.installed) localPull.textContent = 'Complete setup: Laya and MiniCPM';
       const mode = info.backend && info.backend !== 'cpu' ? 'GPU: ' + (info.device || info.backend) : 'CPU';
       localState.textContent = info.pulling ? `Downloading… ${info.pulling.percent}% (${info.pulling.status})` :
         info.error ? 'Download failed: ' + info.error :
         !info.supported ? 'This system has no ready-made engine in the app. Choose another provider.' :
         info.installed ? 'Built-in model ready. ' + mode + '.' : 'Built-in model not downloaded yet.';
       if (info.accelerationError) localState.textContent += ' ' + info.accelerationError;
+      if (info.laya && !info.pulling) localState.textContent += ' Laya: ' + (info.laya.installed ? 'ready' : 'not installed') + '. MiniCPM: ' + (info.minicpmInstalled ? 'ready' : 'not installed') + '.';
       if (info.pulling && settingsDialog.open) pollTimer = setTimeout(checkLocal, 2000);
     } catch (e) { localState.textContent = 'Built-in model status unavailable: ' + e.message; }
   }
@@ -100,8 +99,7 @@ function initAssistantSettings() {
   // The request body follows the selected provider.
   function fields() {
     const builtin = provider.value === 'llamacpp';
-    // The backup is the built-in model ('llamacpp'), or an empty string for none.
-    const body = { enabled: enabled.checked, provider: provider.value, fallback: fallback.checked && !builtin ? 'llamacpp' : '' };
+    const body = { enabled: enabled.checked, provider: provider.value };
     if (!cpuThreads.disabled) body.cpuThreads = Number(cpuThreads.value);
     if (!builtin) body.model = model.value;
     if (token.value) body.token = token.value;

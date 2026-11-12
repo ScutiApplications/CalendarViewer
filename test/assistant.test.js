@@ -192,17 +192,6 @@ test('a tool router limits the tools sent to the model', async () => {
   assert.deepEqual(seen[0], ['a']);
 });
 
-test('the built-in model router picks tools from the model reply and fails open', async () => {
-  const { createModelRouter } = require('../src/server/tool-router');
-  const defs = [{ name: 'day_summary', description: 'x' }, { name: 'time_until', description: 'y' }, { name: 'list_events', description: 'z' }];
-  const seen = [];
-  const pick = reply => createModelRouter({ client: { chat: async payload => { seen.push(payload); if (reply instanceof Error) throw reply; return { content: reply }; } } });
-  assert.deepEqual((await pick('time_until, day_summary').select('q', defs)).map(t => t.name), ['day_summary', 'time_until']);
-  assert.equal(seen[0].tools, undefined); assert.equal(seen[0].thinking, false); assert.match(seen[0].messages[0].content, /list_events: z/);
-  assert.equal((await pick('none of them').select('q', defs)).length, 3);
-  assert.equal((await pick(new Error('down')).select('q', defs)).length, 3);
-});
-
 test('the assistant reports its working steps in order', async () => {
   const out = []; let n = 0;
   const client = { chat: async () => n++ ? { finish_reason: 'stop', content: 'ok' } : { finish_reason: 'tool_calls', tool_calls: [{ name: 'list_events', arguments: { start: 'today' } }] } };

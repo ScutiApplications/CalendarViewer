@@ -1,7 +1,6 @@
 // Settings come from the web UI (data/assistant-config.json, mode 0600); environment variables override them.
 // provider: llamacpp (MiniCPM5-2B run by a llama.cpp server program the app downloads itself) or a hosted provider
-// (anthropic, openai, gemini) with an API key. `fallback` is '' or 'llamacpp': the built-in model that answers when the chosen
-// hosted provider fails.
+// (anthropic, openai, gemini) with an API key. Hosted providers never fall back to local models.
 const { PROVIDERS } = require('./providers');
 const os = require('node:os');
 const MODEL_ID = /^[A-Za-z0-9][A-Za-z0-9._:\/-]{0,99}$/;
@@ -22,7 +21,7 @@ function assistantConfig(config = {}, env = process.env) {
   const provider = env.ASSISTANT_PROVIDER || config.provider || 'llamacpp';
   if (!(provider in PROVIDERS)) throw new Error('Provider must be llamacpp, anthropic, openai or gemini.');
   const enabled = env.CALENDAR_ASSISTANT_ENABLED === undefined ? config.enabled === true : env.CALENDAR_ASSISTANT_ENABLED === '1';
-  const fallback = (config.fallback === true || config.fallback === 'llamacpp') && provider !== 'llamacpp' ? 'llamacpp' : '';
+  const fallback = ''; // Legacy response field; old saved fallback preferences no longer enable local inference.
   const cpuThreads = cpuThreadsFor(config.cpuThreads);
   if (provider === 'llamacpp') return { enabled, provider, url: PROVIDERS.llamacpp.origin, token: '', model: PROVIDERS.llamacpp.model, fallback, cpuThreads };
   const info = PROVIDERS[provider];
@@ -32,7 +31,7 @@ function assistantConfig(config = {}, env = process.env) {
 }
 // Keeps only the saved fields this version understands; a provider that no longer exists falls back to the default.
 function savedSettings(raw = {}) {
-  const kept = Object.fromEntries(['enabled', 'provider', 'fallback', 'keys', 'models', 'cpuThreads'].filter(name => raw[name] !== undefined).map(name => [name, raw[name]]));
+  const kept = Object.fromEntries(['enabled', 'provider', 'keys', 'models', 'cpuThreads'].filter(name => raw[name] !== undefined).map(name => [name, raw[name]]));
   if (kept.provider !== undefined && !Object.hasOwn(PROVIDERS, kept.provider)) delete kept.provider;
   // A saved count from a larger machine must not disable the assistant on this one.
   if (Number.isInteger(kept.cpuThreads) && kept.cpuThreads > cpuThreadLimit()) kept.cpuThreads = cpuThreadLimit();

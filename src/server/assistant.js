@@ -105,7 +105,7 @@ function createAssistant({ client, tools, router = null, now = Date.now }) {
     const picked = route ? await router.select(turns.length ? `${turns.at(-1).question}\n${question}` : question, tools.definitions, { signal }) : tools.definitions;
     if (route && picked.length < tools.definitions.length) emit({ type: 'step', text: `Using ${picked.map(t => t.name).join(', ')}` });
     const toolDefinitions = picked.map(compactTool);
-    let grounded = false, nudged = false, noticed = false;
+    let grounded = false, nudged = false;
     for (let turn = 0; turn < 5; turn++) {
       signal?.throwIfAborted();
       // Do not release speculative prose before the first real calendar result.
@@ -113,7 +113,6 @@ function createAssistant({ client, tools, router = null, now = Date.now }) {
       emit({ type: 'step', text: grounded ? 'Writing the answer' : 'Asking the model' });
       const reply = await client.chat({ messages, project: 'calendarviewer', tools: toolDefinitions, thinking: false, temperature: 0, max_tokens: 1200, stream: true },
         { signal, onContent: text => { if (grounded) { streamed += text; emit({ type: 'content', text }); } } });
-      if (reply.backup && !noticed) { noticed = true; emit({ type: 'notice', text: 'The selected provider was unavailable, so the built-in MiniCPM5-2B answered.' }); }
       if (reply.finish_reason === 'length') throw new Error('The model ran out of tokens. Try a shorter question or smaller date range.');
       if (reply.finish_reason === 'stop') {
         // A calendar-looking question answered without a tool gets one nudge; greetings and small talk are shown, labelled.

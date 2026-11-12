@@ -93,47 +93,26 @@ test('configuration for hosted providers uses default models, saved keys and env
 test('saved settings keep known fields only and drop a provider that no longer exists', () => {
   const { savedSettings } = require('../src/server/assistant-config');
   assert.deepEqual(savedSettings({ enabled: true, url: 'http://x', token: 't', provider: 'scuti' }), { enabled: true });
-  assert.deepEqual(savedSettings({ provider: 'openai', fallback: 'llamacpp', keys: { openai: 'k' }, models: { openai: 'm' } }), { provider: 'openai', fallback: 'llamacpp', keys: { openai: 'k' }, models: { openai: 'm' } });
+  assert.deepEqual(savedSettings({ provider: 'openai', fallback: 'llamacpp', keys: { openai: 'k' }, models: { openai: 'm' } }), { provider: 'openai', keys: { openai: 'k' }, models: { openai: 'm' } });
   assert.deepEqual(savedSettings({ provider: 'constructor' }), {});
 });
 test('the built-in model is the default', () => {
   for (const provider of [undefined, 'llamacpp']) assert.equal(assistantConfig({ provider }, {}).provider, 'llamacpp');
-  assert.equal(assistantConfig({ provider: 'openai', fallback: true }, {}).fallback, 'llamacpp');
+  assert.equal(assistantConfig({ provider: 'openai', fallback: true }, {}).fallback, '');
   assert.equal(assistantConfig({ provider: 'llamacpp', fallback: 'llamacpp' }, {}).fallback, '');
 });
 
-// The built-in engine stand-in answers in llama-server's OpenAI chat format.
-const engine = { ensure: async () => ({ url: 'http://127.0.0.1:5', key: 'engine-key' }), touch() {}, state: async () => ({ installed: true }) };
-const builtinReply = text => new Response(JSON.stringify({ choices: [{ finish_reason: 'stop', message: { content: text } }] }));
-test('backup: a failing provider falls back to the built-in model and the reply says so', async () => {
-  const calls = [];
-  const fetch = async url => {
-    calls.push(url);
-    if (url.includes('openai')) return new Response(JSON.stringify({ error: { message: 'bad key' } }), { status: 401 });
-    return builtinReply('from built-in');
-  };
-  const client = createModelClient({ provider: 'openai', token: 'k', fallback: 'llamacpp', engine, fetch });
-  const reply = await client.chat(payload);
-  assert.deepEqual([reply.content, reply.backup, calls.length], ['from built-in', true, 2]);
-  // Without the backup switch the provider's error stays visible.
-  client.configure({ provider: 'openai', token: 'k', url: 'https://api.openai.com', fallback: '' });
-  await assert.rejects(client.chat(payload), e => e instanceof ServiceError && e.status === 401);
-  // A missing key skips the provider call entirely.
-  calls.length = 0;
-  client.configure({ provider: 'gemini', token: '', url: 'https://x', fallback: 'llamacpp' });
-  assert.equal((await client.chat(payload)).backup, true);
-  assert.deepEqual(calls, ['http://127.0.0.1:5/v1/chat/completions']);
-});
-test('backup: client errors do not fall back, an unreachable provider does, and health reports the backup', async () => {
-  const bad = createModelClient({ provider: 'openai', token: 'k', fallback: 'llamacpp', engine, fetch: async () => new Response(JSON.stringify({ error: { message: 'bad request' } }), { status: 400 }) });
-  await assert.rejects(bad.chat(payload), e => e.status === 400);
-  const down = createModelClient({ provider: 'openai', token: 'k', fallback: 'llamacpp', engine, fetch: async url => {
-    if (url.includes('openai')) throw Object.assign(new Error('fetch failed'), { cause: { code: 'ECONNREFUSED' } });
-    return builtinReply('backup answer');
-  } });
-  assert.equal((await down.chat(payload)).backup, true);
-  const noKey = createModelClient({ provider: 'openai', token: '', fallback: 'llamacpp', engine, fetch: async () => { throw new Error('unused'); } });
-  assert.deepEqual(await noKey.health(), { ready: true, model: 'MiniCPM5-2B-Q4_K_M', backup: true });
-  const noModel = createModelClient({ provider: 'openai', token: '', fallback: 'llamacpp', engine: { ...engine, state: async () => ({ installed: false }) }, fetch: async () => { throw new Error('unused'); } });
-  assert.deepEqual(await noModel.health(), { ready: false, model: 'luna-6' });
+test('hosted failures never start local models, including legacy fallback settings', async () => {
+  let localCalls = 0;
+  const engine = { ensure: async () => { localCalls++; throw Error('forbidden'); }, state: async () => { localCalls++; return { installed: true }; } };
+  for (const status of [400, 401, 403, 429, 500, 503]) {
+    const client = createModelClient({ provider: 'openai', token: 'k', fallback: 'llamacpp', engine,
+      fetch: async () => new Response(JSON.stringify({ error: { message: 'provider failed' } }), { status }) });
+    await assert.rejects(client.chat(payload), error => error.status === status);
+  }
+  const down = createModelClient({ provider: 'openai', token: 'k', fallback: 'llamacpp', engine, fetch: async () => { throw new Error('unreachable'); } });
+  await assert.rejects(down.chat(payload), /unreachable/i);
+  const noKey = createModelClient({ provider: 'openai', token: '', fallback: 'llamacpp', engine });
+  assert.deepEqual(await noKey.health(), { ready: false, model: 'luna-6' });
+  assert.equal(localCalls, 0);
 });
