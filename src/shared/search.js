@@ -6,7 +6,8 @@
   function matches(event, query) {
     const term = String(query || '').trim().toLowerCase();
     if (!term) return true;
-    return [event.title, event.extendedProps && event.extendedProps.location]
+    const p = event.extendedProps || {};
+    return [event.title, p.location, p.description, p.people]
       .some(value => String(value || '').toLowerCase().includes(term));
   }
 

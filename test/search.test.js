@@ -6,7 +6,7 @@ const path = require('node:path');
 const Search = require('../src/shared/search');
 const { markConflicts, visibleEvents, deduplicateEvents } = require('../src/shared/alert-logic');
 
-test('search trims a case-insensitive literal query across title and location', () => {
+test('search trims a case-insensitive literal query across title, location, description and attendees', () => {
   const event = { title: 'Planning [Q4]', extendedProps: { location: 'East ROOM' } };
   assert.equal(Search.matches(event, '  PLANNING  '), true);
   assert.equal(Search.matches(event, 'room'), true);
@@ -19,7 +19,8 @@ test('empty queries match everything and missing fields remain safe', () => {
   assert.equal(Search.matches({}, '   '), true);
   assert.equal(Search.matches({}, 'room'), false);
   assert.equal(Search.matches({ title: null, extendedProps: { location: null } }, 'null'), false);
-  assert.equal(Search.matches({ extendedProps: { description: 'private notes' } }, 'private'), false);
+  assert.equal(Search.matches({ extendedProps: { description: 'private notes', people: 'Sam Rivera' } }, 'private'), true);
+  assert.equal(Search.matches({ extendedProps: { people: 'Sam Rivera' } }, 'rivera'), true);
 });
 
 test('browser script exposes the same search behavior', () => {
