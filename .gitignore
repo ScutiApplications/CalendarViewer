@@ -37,3 +37,7 @@ GEMINI.md
 DESIGN.md
 DESIGN.json
 PRODUCT.md
+
+# Playwright output
+test-results/
+playwright-report/
