@@ -151,6 +151,12 @@ function parseIcs(text) {
   return events;
 }
 
+// Organizer and attendee names (or addresses) for search; kept out of alert text and the page.
+function people(component) {
+  return ['organizer', 'attendee'].flatMap(name => component.getAllProperties(name))
+    .map(p => p.getParameter('cn') || String(p.getFirstValue() || '').replace(/^mailto:/i, '')).filter(Boolean).join(' ');
+}
+
 function toFc(src, detail, startT, endT) {
   if (String(detail.item.component.getFirstPropertyValue('status')).toUpperCase() === 'CANCELLED') return null;
   const allDay = startT.isDate;
@@ -165,7 +171,8 @@ function toFc(src, detail, startT, endT) {
       sourceDetails: [{ id: src.id, key: src.alertKey, name: src.name, color: src.color }],
       uid: detail.item.uid || '',
       location: detail.item.location,
-      description: detail.item.description
+      description: detail.item.description,
+      people: people(detail.item.component)
     }
   };
 }

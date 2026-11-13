@@ -17,7 +17,7 @@ const RANGE = {
 const TOOLS = [
   { name: 'list_calendars', description: 'List the linked and imported calendars with their visibility and event counts.', inputSchema: { type: 'object', properties: {} } },
   { name: 'list_events', description: 'List events in a date range, merged across calendars and with overlaps marked. Cancelled events are left out.',
-    inputSchema: { type: 'object', properties: { ...RANGE, query: { type: 'string', description: 'Only events whose title or location contains this text.' } } } },
+    inputSchema: { type: 'object', properties: { ...RANGE, query: { type: 'string', description: 'Only events with these words in the title, location, description or attendees.' } } } },
   { name: 'get_event', description: 'Get full details of one event by uid (description, location, meeting link, occurrences in the range). Default range: 30 days back to 60 days ahead.',
     inputSchema: { type: 'object', properties: { uid: { type: 'string' }, ...RANGE }, required: ['uid'] } },
   { name: 'up_next', description: 'The next upcoming events within 7 days, soonest first.',
@@ -57,6 +57,17 @@ function createCalendarTools({ sources, now = Date.now }) {
       location: p.location || '', calendars: p.sources, overlapsWith: p.conflicts };
   };
 
+  // Short description excerpt around the first query word, so the model can answer without a get_event call.
+  function snippet(e, query) {
+    const text = String(e.extendedProps.description || '').replace(/\s+/g, ' ').trim();
+    if (!text) return undefined;
+    const lower = text.toLowerCase();
+    const at = Math.max(0, ...Search.wordsOf(query).map(w => lower.indexOf(Search.stem(w))).filter(i => i >= 0).slice(0, 1));
+    return (at > 40 ? '…' : '') + text.slice(Math.max(0, at - 40), at + 120);
+  }
+  // Best matches first; equal scores keep calendar order.
+  const rank = (events, query, options) => events.map((e, i) => ({ e, i, s: Search.score(e, query, options) }))
+    .filter(x => x.s > 0).sort((a, b) => b.s - a.s || a.i - b.i).map(x => x.e);
   const listed = (events, limit = MAX_EVENTS) => ({ total: events.length, events: events.slice(0, limit).map(summary) });
 
   const handlers = new Map(Object.entries({
@@ -65,7 +76,7 @@ function createCalendarTools({ sources, now = Date.now }) {
     },
     async list_events(args) {
       const [from, to] = range(args);
-      const events = merged(await sources(), from, to).filter(e => Search.matches(e, args.query));
+      const events = merged(await sources(), from, to).filter(e => Search.matchesWords(e, args.query));
       return listed(events);
     },
     async get_event(args) {
@@ -104,7 +115,7 @@ function createCalendarTools({ sources, now = Date.now }) {
     async time_until(args) {
       const t = now();
       const found = merged(await sources(), new Date(t - DAY_MS), new Date(t + 30 * DAY_MS))
-        .filter(e => !e.allDay && (e.end > e.start ? +e.end : +e.start) > t && Search.matches(e, args.query));
+        .filter(e => !e.allDay && (e.end > e.start ? +e.end : +e.start) > t && Search.matchesWords(e, args.query));
       const next = found[0];
       if (!next) return { note: 'No upcoming event in the next 30 days.' };
       const started = +next.start <= t;
@@ -124,8 +135,13 @@ function createCalendarTools({ sources, now = Date.now }) {
     async search_events(args) {
       if (typeof args.query !== 'string' || !args.query.trim()) fail('query is required.');
       const [from, to] = range(args, now() - 30 * DAY_MS, 90 * DAY_MS);
-      const events = merged(await sources(), from, to).filter(e => Search.matches(e, args.query));
-      return listed(events, 20);
+      const all = merged(await sources(), from, to);
+      // Widen only when the stricter pass finds nothing: all words, then one typo per word, then any word.
+      let ranked = [];
+      for (const options of [{}, { fuzzy: true }, { fuzzy: true, any: true }]) if (!(ranked = rank(all, args.query, options)).length) continue; else break;
+      const out = listed(ranked, 20);
+      out.events = out.events.map((e, i) => ({ ...e, description_excerpt: snippet(ranked[i], args.query) }));
+      return out;
     },
     async list_all_day(args) {
       const [from, to] = range(args);
@@ -135,7 +151,7 @@ function createCalendarTools({ sources, now = Date.now }) {
     async recurring_summary(args) {
       if (typeof args.query !== 'string' || !args.query.trim()) fail('query is required.');
       const groups = new Map();
-      for (const e of merged(await sources(), new Date(now()), new Date(now() + MAX_SPAN_MS)).filter(e => Search.matches(e, args.query))) {
+      for (const e of merged(await sources(), new Date(now()), new Date(now() + MAX_SPAN_MS)).filter(e => Search.matchesWords(e, args.query))) {
         const g = groups.get(e.extendedProps.uid) || { title: e.title, uid: e.extendedProps.uid, starts: [] };
         g.starts.push(e.start.toISOString()); groups.set(e.extendedProps.uid, g);
       }
@@ -184,9 +200,9 @@ const ASSISTANT_TOOLS = [...TOOLS,
   { name: 'get_working_hours', description: 'The working hours (shift) of the user: start, end and length per day. Use for questions about shift, work hours or how long they work.', inputSchema: { type: 'object', properties: { work_start: { type: 'string' }, work_end: { type: 'string' } } }, annotations: READ_ONLY },
   { name: 'day_summary', description: 'One day at a glance: event count, total busy minutes, first start, last end (when the day ends) and longest gap.', inputSchema: { type: 'object', properties: DAY }, annotations: READ_ONLY },
   { name: 'next_free_slot', description: 'The first free time of a given length from now, within working hours.', inputSchema: { type: 'object', properties: { minutes: { type: 'integer' }, work_start: { type: 'string' }, work_end: { type: 'string' } }, required: ['minutes'] }, annotations: READ_ONLY },
-  { name: 'time_until', description: 'Minutes until the next event starts (or until a matching event, with query), or how long until the current one ends.', inputSchema: { type: 'object', properties: { query: { type: 'string', description: 'Only events whose title or location contains this text.' } } }, annotations: READ_ONLY },
+  { name: 'time_until', description: 'Minutes until the next event starts (or until a matching event, with query), or how long until the current one ends.', inputSchema: { type: 'object', properties: { query: { type: 'string', description: 'Only events with these words in the title, location, description or attendees.' } } }, annotations: READ_ONLY },
   { name: 'busiest_day', description: 'Per-day busy minutes in a range, with the busiest and lightest day.', inputSchema: { type: 'object', properties: RANGE }, annotations: READ_ONLY },
-  { name: 'search_events', description: 'Find events by title or location over a wide range (default 30 days back to 60 ahead).', inputSchema: { type: 'object', properties: { query: { type: 'string' }, ...RANGE }, required: ['query'] }, annotations: READ_ONLY },
+  { name: 'search_events', description: 'Find events by words in title, location, description or attendees over a wide range (default 30 days back to 60 ahead).', inputSchema: { type: 'object', properties: { query: { type: 'string' }, ...RANGE }, required: ['query'] }, annotations: READ_ONLY },
   { name: 'list_all_day', description: 'All-day events only (holidays, leave, day-long blocks) in a range.', inputSchema: { type: 'object', properties: RANGE }, annotations: READ_ONLY },
   { name: 'recurring_summary', description: 'Upcoming occurrences of events matching a title, grouped per series, to tell how often they repeat.', inputSchema: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'] }, annotations: READ_ONLY },
   { name: 'find_free_time', description: 'Find available time, computed by code. Default weekdays 09:00–17:00; range may be today, thursday, this week, next week or ISO dates. Ends are exclusive.', inputSchema: { type: 'object', properties: { ...RANGE, minutes: { type: 'integer' }, work_start: { type: 'string' }, work_end: { type: 'string' } }, required: ['minutes'] }, annotations: READ_ONLY }];

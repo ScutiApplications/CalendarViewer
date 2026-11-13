@@ -32,6 +32,16 @@ test('free time unions busy events, clips range, respects all-day and excludes t
   assert.equal(night[0].start, d(22).toISOString());
 });
 
+test('search_events matches words in descriptions and returns an excerpt', async () => {
+  const ev = (uid, title, desc) => ['BEGIN:VEVENT', 'UID:' + uid, 'SUMMARY:' + title, 'DESCRIPTION:' + desc, 'DTSTART:20261105T090000', 'DTEND:20261105T100000', 'END:VEVENT'];
+  const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:test', ...ev('a', 'Budget review', 'Discuss the vendor contract renewal'), ...ev('b', 'Lunch', 'Pizza'), 'END:VCALENDAR'].join('\r\n');
+  const tools = createCalendarTools({ sources: async () => [{ alertKey: 'l:t', name: 'T', enabled: true, events: logic.parseIcs(ics) }], now: () => now });
+  assert.equal((await tools.execute('search_events', { query: 'vendor contracts' })).total, 1);
+  assert.equal((await tools.execute('search_events', { query: 'payroll' })).total, 0);
+  const hit = await tools.execute('search_events', { query: 'Vendor contr' });
+  assert.equal(hit.total, 1); assert.match(hit.events[0].description_excerpt, /vendor contract/);
+});
+
 test('shared tools validate flat arguments and expose assistant-only availability', async () => {
   const tools = createCalendarTools({ sources: async () => [], now: () => now });
   assert.equal(TOOLS.length, 5);
