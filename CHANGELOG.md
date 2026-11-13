@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.1.0
+
 ### Added
 
 - Find free time across all calendars, plus Next free slot, Focus time, Overlaps and Week summary. Show jumps to the matching week.
