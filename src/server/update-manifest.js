@@ -7,7 +7,10 @@ const MANIFEST_URL = 'https://scutiapplications.github.io/CalendarViewer/latest.
 const SIGNATURE_URL = MANIFEST_URL + '.sig';
 // Ed25519 public key (PEM) of the maintainer. While null, manifests are accepted unsigned. Once set, every manifest
 // needs a matching latest.json.sig. See docs/update-integrity.md.
-const SIGNING_PUBLIC_KEY = null;
+const SIGNING_PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
+MCowBQYDK2VwAyEAur92a6GsIET6UT6cDSGc+edWk3oHHfjATdxJXv1xCy4=
+-----END PUBLIC KEY-----
+`;
 const STABLE = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 
 function validateManifest(value) {
