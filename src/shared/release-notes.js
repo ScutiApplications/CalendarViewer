@@ -1,6 +1,18 @@
 // Keep entries paired with published VERSION values. Content is rendered as text, never HTML.
 (function (root) {
   const releases = [
+    { version: '1.0.7', changes: [
+      'Find free time across all calendars, plus Next free slot, Focus time, Overlaps and Week summary. Show jumps to the matching week.',
+      'Join now button for a Teams meeting that is running or starts within 10 minutes.',
+      'Search all dates, with filters for one calendar or Teams meetings only. The search area starts collapsed.',
+      'Private notes on events, kept in this browser and in backups only, never added to a calendar.',
+      'Daily agenda and weekly summary Windows notifications at times you choose.',
+      'Export the displayed range as .ics, print a fitted A4 view, keyboard shortcuts, a second time zone, first day of week, 12 or 24 hour clock and high-contrast mode.',
+      'MCP access needs a token generated in Settings; regenerate or revoke it at any time.',
+      'Update checks verify a signed release manifest. A release can require an update, which shows a dialog that stays until the update is installed.',
+      'What’s new appears after every update, tracked by the application rather than by browser storage.',
+      'Clearer calendar link errors, and a link that is already saved is refused with the name of the existing calendar.'
+    ] },
     { version: '1.0.6', changes: [
       'Saved API keys use Windows DPAPI encryption tied to the Windows account running CalendarViewer. Existing plaintext keys migrate on startup.',
       'Calendar starts while keys unlock; assistant settings show progress and recovery options for unavailable keys.',
