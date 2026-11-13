@@ -79,10 +79,10 @@ test('explicit install stages a verified package, keeps old server alive until r
   let downloaded = 0, launched = 0, restarted = 0;
   let confirmRestart;
   const restartCalled = new Promise(resolve => { confirmRestart = resolve; });
-  const release = { status: 'available', latestVersion: '1.1.0', download: { url: 'https://github.com/test.zip', sha256: digest, size: bytes.length } };
+  const release = { status: 'available', latestVersion: '1.1.0', download: { url: 'https://github.com/api/v3/repos/ScutiApplications/CalendarViewer/releases/assets/1', sha256: digest, size: bytes.length } };
   const installer = createUpdateInstaller({ root: job.root, dataDir, version: '1.0.0', platform: 'win32', port: 29945,
-    checker: { async check(options) { assert.equal(options.force, true); return release; } },
-    download: options => downloadVerified({ ...options, fetch: async () => { downloaded++; return new Response(bytes); } }),
+    checker: { async check(options) { assert.equal(options.force, true); return release; }, async downloadOptions() { return { allowedHost: 'github.com', headers: { Accept: 'application/octet-stream' } }; } },
+    download: options => downloadVerified({ ...options, fetch: async (_url, request) => { downloaded++; assert.equal(request.headers.Authorization, undefined); return new Response(bytes); } }),
     extract: async (_zip, target) => {
       const stage = path.join(target, 'CalendarViewer');
       await fs.cp(job.stage, stage, { recursive: true });

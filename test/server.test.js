@@ -31,7 +31,7 @@ const tempData = () => fs.mkdtempSync(path.join(os.tmpdir(), 'calendar-data-'));
 
 // Spawns the real server and resolves once it prints its banner.
 async function startServer(t, env) {
-  const server = spawn(process.execPath, [script], { env: { ...process.env, CALENDAR_DATA_DIR: tempData(), ...env }, stdio: 'pipe' });
+  const server = spawn(process.execPath, [script], { env: { ...process.env, CALENDARVIEWER_UPDATE_TOKEN: '', CALENDAR_DATA_DIR: tempData(), ...env }, stdio: 'pipe' });
   t.after(() => server.kill());
   await new Promise((resolve, reject) => {
     server.stdout.on('data', d => String(d).includes('ICS viewer') && resolve());
@@ -91,6 +91,8 @@ test('server serves the web files safely and guards the startup endpoint', async
   const updateState = await request('GET', '/api/updates/status', { 'X-Calendar-Action': '1' });
   assert.equal(updateState.status, 200);
   assert.equal(JSON.parse(updateState.data).supported, false); // Tests run a Git checkout, never a portable install.
+  const tokenHeaders = { 'X-Calendar-Action': '1', 'Content-Type': 'application/json' };
+  for (const route of ['/api/updates/token', '/api/updates/token/status']) assert.equal((await request('GET', route, tokenHeaders)).status, 404);
 
   const body = JSON.stringify({ enabled: false });
   const post = headers => request('POST', '/api/startup', { 'Content-Type': 'application/json', ...headers }, body).then(r => r.status);
@@ -119,11 +121,39 @@ test('server serves the web files safely and guards the startup endpoint', async
   assert.equal((await request('POST', '/mcp', { ...json, Host: 'evil.example:' + port }, rpc)).status, 403, 'mcp foreign host');
   assert.equal((await request('POST', '/mcp', { ...json, Origin: 'http://localhost:' + port }, rpc)).status, 403, 'mcp browser origin');
   assert.equal((await request('GET', '/mcp')).status, 405);
-  assert.equal((await request('POST', '/mcp', json, '{')).status, 400);
-  const listed = await request('POST', '/mcp', json, rpc);
+  const unauthorized = await request('POST', '/mcp', json, '{');
+  assert.equal(unauthorized.status, 401);
+  assert.equal(unauthorized.headers['www-authenticate'], 'Bearer realm="CalendarViewer"');
+  assert.deepEqual(JSON.parse(unauthorized.data), { jsonrpc: '2.0', id: null, error: { code: -32001, message: 'Unauthorized' } });
+  for (const route of ['/api/mcp/token', '/api/mcp/token/status']) {
+    for (const method of ['GET', 'POST', 'DELETE']) {
+      assert.equal((await request(method, route)).status, 403);
+      assert.equal((await request(method, route, { ...tokenHeaders, Origin: 'https://evil.example' })).status, 403);
+      assert.equal((await request(method, route, { ...tokenHeaders, Host: 'evil.example' })).status, 403);
+    }
+  }
+  assert.deepEqual(JSON.parse((await request('GET', '/api/mcp/token/status', tokenHeaders)).data), { configured: false, createdAt: null });
+  const generated = await request('POST', '/api/mcp/token', tokenHeaders);
+  assert.equal(generated.status, 200);
+  const { token } = JSON.parse(generated.data); assert.match(token, /^cvmcp_/);
+  const tokenState = JSON.parse((await request('GET', '/api/mcp/token/status', tokenHeaders)).data);
+  assert.deepEqual(Object.keys(tokenState).sort(), ['configured', 'createdAt']); assert.equal(tokenState.configured, true);
+  const auth = { ...json, Authorization: 'Bearer ' + token };
+  for (const Authorization of ['Bearer wrong', 'Basic ' + token, 'Bearer ' + token + ' extra']) assert.equal((await request('POST', '/mcp', { ...json, Authorization }, rpc)).status, 401);
+  assert.equal((await request('POST', '/mcp?token=' + encodeURIComponent(token), json, rpc)).status, 401);
+  assert.equal((await request('POST', '/mcp', { ...auth, Host: 'evil.example' }, rpc)).status, 403);
+  assert.equal((await request('POST', '/mcp', { ...auth, Origin: 'http://localhost:' + port }, rpc)).status, 403);
+  assert.equal((await request('POST', '/mcp', auth, '{')).status, 400);
+  const listed = await request('POST', '/mcp', auth, rpc);
   assert.equal(listed.status, 200);
   assert.equal(JSON.parse(listed.data).result.tools.length, 5);
-  assert.equal((await request('POST', '/mcp', json, JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }))).status, 202);
+  assert.equal((await request('POST', '/mcp', auth, JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }))).status, 202);
+  const replacement = JSON.parse((await request('POST', '/api/mcp/token', tokenHeaders)).data).token;
+  assert.equal((await request('POST', '/mcp', auth, rpc)).status, 401);
+  const newAuth = { ...json, Authorization: 'Bearer ' + replacement };
+  assert.equal((await request('POST', '/mcp', newAuth, rpc)).status, 200);
+  assert.equal((await request('DELETE', '/api/mcp/token', tokenHeaders)).status, 200);
+  assert.equal((await request('POST', '/mcp', newAuth, rpc)).status, 401);
 });
 
 test('oversized request bodies get 413 and bad feeds fail fast', async t => {
@@ -181,4 +211,29 @@ test('feed fetches follow redirects and stop after too many', async t => {
   const looped = await fetchVia(local, '/loop');
   assert.equal(looped.status, 502);
   assert.match(looped.data, /too many times/);
+});
+
+test('adding a calendar link that is already saved is refused with 409', async t => {
+  const port = 3988;
+  await startServer(t, { PORT: String(port) });
+  const request = requester(port);
+  const json = { 'Content-Type': 'application/json' };
+  const add = (name, url) => request('POST', '/api/feeds', json, JSON.stringify({ name, url }));
+  assert.equal((await add('Work', 'https://example.com/cal/work.ics')).status, 201);
+  const again = await add('Copy', 'webcal://EXAMPLE.com/cal/work.ics#x');
+  assert.equal(again.status, 409); assert.match(again.data, /already added as "Work"/);
+  assert.equal((await add('Home', 'https://example.com/cal/home.ics')).status, 201);
+  assert.equal(JSON.parse((await request('GET', '/api/feeds')).data).length, 2);
+});
+
+test('the version route reports the previous version after an update until it is acknowledged', async t => {
+  const dir = tempData();
+  fs.writeFileSync(path.join(dir, 'version-state.json'), JSON.stringify({ lastRun: '0.0.1' }));
+  const port = 3987;
+  await startServer(t, { PORT: String(port), CALENDAR_DATA_DIR: dir });
+  const request = requester(port);
+  assert.equal(JSON.parse((await request('GET', '/api/version')).data).announceFrom, '0.0.1');
+  assert.equal((await request('POST', '/api/version/seen')).status, 403, 'needs the local action header');
+  assert.equal((await request('POST', '/api/version/seen', { 'X-Calendar-Action': '1' })).status, 204);
+  assert.equal(JSON.parse((await request('GET', '/api/version')).data).announceFrom, null);
 });

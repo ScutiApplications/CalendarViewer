@@ -1,11 +1,12 @@
-// Bundled notes work offline. Remember presentation per browser, not per server installation.
+// Bundled notes work offline. The server also remembers the version that ran before an update (announceFrom), so the
+// notes appear after every update even if this browser's storage was cleared. Browser storage covers a first visit.
 (() => {
   const button = document.getElementById('show-release-notes');
   const dialog = document.getElementById('release-notes-dialog');
   const content = document.getElementById('release-notes-content');
   const state = document.getElementById('release-notes-state');
   const key = 'ics-calendar-viewer.releaseNotes.v1';
-  let version = '', pending = true, previousFocus = null, loading = null;
+  let version = '', announceFrom = null, pending = true, previousFocus = null, loading = null;
 
   function remembered() { try { return localStorage.getItem(key); } catch { return null; } }
   function remember() {
@@ -16,8 +17,8 @@
   }
   function show(automatic) {
     if (dialog.open || document.querySelector('dialog[open]') || document.hidden) return false;
-    const previous = remembered();
-    if (automatic && CalendarReleases.compare(version, previous) !== null && CalendarReleases.compare(version, previous) <= 0) { pending = false; return false; }
+    const previous = automatic && announceFrom ? announceFrom : remembered();
+    if (automatic && !announceFrom && CalendarReleases.compare(version, previous) !== null && CalendarReleases.compare(version, previous) <= 0) { pending = false; return false; }
     const entries = automatic ? CalendarReleases.since(previous, version) : CalendarReleases.through(version);
     content.replaceChildren();
     if (!entries.some(item => item.version === version)) entries.unshift({ version, changes: ['Bundled notes for this version are not available. Use the published release history for details.'] });
@@ -33,6 +34,7 @@
     dialog.showModal();
     document.getElementById('release-notes-close').focus();
     pending = false; remember();
+    if (announceFrom) { announceFrom = null; api('/api/version/seen', { method: 'POST', headers: { 'X-Calendar-Action': '1' } }).catch(() => {}); }
     return true;
   }
   async function maybeShow() {
@@ -42,7 +44,7 @@
       const probe = key + '.probe';
       localStorage.setItem(probe, '1');
       localStorage.removeItem(probe);
-    } catch { pending = false; return; }
+    } catch { if (!announceFrom) { pending = false; return; } }
     const attempt = () => show(true);
     if (navigator.locks?.request) await navigator.locks.request('calendar-release-notes', { ifAvailable: true }, lock => lock ? attempt() : false);
     else attempt();
@@ -52,7 +54,7 @@
     if (loading) return loading;
     loading = apiJson('/api/version', { signal: AbortSignal.timeout(5000) }).then(data => {
       if (CalendarReleases.compare(data.version, '0.0.0') === null) throw new Error('Installed version is unavailable.');
-      version = data.version; state.textContent = '';
+      version = data.version; announceFrom = typeof data.announceFrom === 'string' ? data.announceFrom : null; state.textContent = '';
     }).finally(() => { loading = null; });
     return loading;
   }

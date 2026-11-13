@@ -1,3 +1,4 @@
+// @ts-check
 // Async, atomic settings persistence. Plaintext keys exist only in runtime objects; disk writes use DPAPI envelopes.
 const fs = require('node:fs');
 const path = require('node:path');
@@ -30,7 +31,10 @@ async function readSettings(file) {
 
 function createAssistantSettingsStore({ file, protector = createCredentialProtector() }) {
   const cached = new Map();
-  let queue = Promise.resolve(), loaded = false, loadError = '', migrationPending = false, errors = {};
+  /** @type {Promise<unknown>} */
+  let queue = Promise.resolve();
+  let loaded = false, loadError = '', migrationPending = false, errors = {};
+  /** @template T @param {() => Promise<T>} work @returns {Promise<T>} */
   const serialized = work => {
     const operation = queue.then(work);
     queue = operation.catch(() => {});

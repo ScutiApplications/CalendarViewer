@@ -69,6 +69,7 @@ for (const fail of [false, true]) test('real detached update worker ' + (fail ? 
   } finally {
     old?.kill();
     // A marker checked above establishes ownership before stopping the detached fixture server.
+    // eslint-disable-next-line no-unsafe-finally -- cleanup must fail loudly unless the fixture already exited
     if (activePid) { try { process.kill(activePid); } catch (error) { if (error.code !== 'ESRCH') throw error; } }
     await delay(300);
     await fs.rm(base, { recursive: true, force: true });

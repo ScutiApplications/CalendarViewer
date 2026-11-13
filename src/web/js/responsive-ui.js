@@ -79,7 +79,8 @@ function initResponsiveUI() {
     backdrop.hidden = false;
     main.inert = header.inert = true;
     document.querySelectorAll('[data-open-panel]').forEach(button => button.setAttribute('aria-expanded', 'true'));
-    const target = section === 'settings' ? sidebar.querySelector('.alerts-panel') : sidebar.querySelector('.sb-head');
+    if (section === 'settings') document.getElementById('display-settings').open = true;
+    const target = section === 'settings' ? sidebar.querySelector('#display-settings') : sidebar.querySelector('.sb-head');
     target.scrollIntoView({ block: 'start' });
     if (section === 'settings') target.querySelector('input, button')?.focus();
     else close.focus();

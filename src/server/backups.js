@@ -1,3 +1,4 @@
+// @ts-check
 const fs = require('fs');
 const Backup = require('../shared/backup.js');
 const { writeJsonAtomic } = require('./json-store');

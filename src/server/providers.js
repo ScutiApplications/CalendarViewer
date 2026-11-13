@@ -1,3 +1,4 @@
+// @ts-check
 // Hosted model providers. Each adapter turns the assistant's neutral chat payload into the provider's request
 // and the provider's answer back into { finish_reason, content, tool_calls }. No dependencies, no streaming.
 // Required lazily: model-client requires this file too.
@@ -51,7 +52,7 @@ const adapters = {
       for (const m of messages) {
         if (m.role === 'user') pushMerged(out, 'user', [{ type: 'text', text: m.content }]);
         else if (m.role === 'assistant') {
-          const parts = m.content ? [{ type: 'text', text: m.content }] : [];
+          const parts = /** @type {any[]} */ (m.content ? [{ type: 'text', text: m.content }] : []);
           ids = [];
           for (const call of m.tool_calls || []) { const id = 'call_' + (++count); ids.push(id); parts.push({ type: 'tool_use', id, name: call.name, input: parseArgs(call.arguments) }); }
           if (parts.length) pushMerged(out, 'assistant', parts);
@@ -103,7 +104,7 @@ const adapters = {
       for (const m of messages) {
         if (m.role === 'user') pushMerged(contents, 'user', [{ text: m.content }]);
         else if (m.role === 'assistant') {
-          const parts = m.content ? [{ text: m.content }] : [];
+          const parts = /** @type {any[]} */ (m.content ? [{ text: m.content }] : []);
           names = [];
           // Gemini 3 needs the thought signature of a function call echoed back.
           for (const call of m.tool_calls || []) { names.push(call.name); parts.push({ functionCall: { name: call.name, args: parseArgs(call.arguments) }, ...(call.thoughtSignature ? { thoughtSignature: call.thoughtSignature } : {}) }); }

@@ -1,3 +1,4 @@
+// @ts-check
 // Runs scripts/calendar.ps1 with an action. Shared by the toast sender (alerts.js) and the startup installer (startup.js).
 const path = require('path');
 const { spawn } = require('child_process');

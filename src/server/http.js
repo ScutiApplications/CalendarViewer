@@ -1,3 +1,4 @@
+// @ts-check
 // Response helpers shared by the route table and the static file server.
 // Everything is served from this origin; inline styles stay allowed because FullCalendar injects a <style> element.
 const CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'";

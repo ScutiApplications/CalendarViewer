@@ -1,3 +1,4 @@
+// @ts-check
 // Shared read-only definitions and handlers for MCP and the local assistant.
 const logic = require('../shared/alert-logic.js');
 const Search = require('../shared/search.js');
@@ -184,7 +185,7 @@ function createCalendarTools({ sources, now = Date.now }) {
       const dates = resolveDateRange(args.start || 'this week', args.end, now());
       const events = merged(await sources(), ...dates);
       const hours = { start: args.work_start, end: args.work_end };
-      const slots = findFreeTime(events, dates, args.minutes, hours, now());
+      const slots = findFreeTime(events, /** @type {[Date, Date]} */ (dates), args.minutes, hours, now());
       // Empty lists are dropped before the model reads a result, so say in words what was searched and that nothing is free.
       return { timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, working_hours: `${hours.start || '09:00'}-${hours.end || '17:00'} on weekdays`, slots,
         ...(slots.length ? {} : { note: `No free time of ${args.minutes} minutes in this range, within those working hours and after the current time.` }) };

@@ -1,3 +1,4 @@
+// @ts-check
 // Shared notice contract: changing the disclosure requires a new revision and a fresh choice.
 (function (root) {
   const REVISION = '2026-11-12';

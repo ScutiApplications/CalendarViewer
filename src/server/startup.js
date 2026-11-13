@@ -1,3 +1,4 @@
+// @ts-check
 // Turns "start the server at Windows sign-in" on or off by running scripts/calendar.ps1, the same script run.bat uses.
 const fs = require('fs');
 const path = require('path');
@@ -13,7 +14,7 @@ function runInstaller(args) {
     child.stderr.on('data', c => { output += c; });
     child.on('error', e => reject(new Error(e.message)));
     child.on('exit', code => {
-      if (code === 0) return resolve();
+      if (code === 0) return resolve(undefined);
       const lines = output.trim().split(/\r?\n/).filter(Boolean);
       reject(new Error(lines.pop() || 'Startup installer failed with code ' + code));
     });

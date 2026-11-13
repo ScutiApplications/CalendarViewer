@@ -9,6 +9,41 @@ hideCancelledToggle.onchange = () => {
   calendar.refetchEvents();
 };
 muteAll.checked = alertRules.global.muted;
+// Daily agenda: one summary toast a day from the background server, at a chosen time.
+const dailyEnabled = document.getElementById('daily-enabled');
+const dailyTime = document.getElementById('daily-time');
+(function initDailyAgenda() {
+  const daily = alertRules.global.daily || { enabled: false, time: DAILY_DEFAULT_TIME };
+  dailyEnabled.checked = daily.enabled;
+  dailyTime.value = daily.time;
+  dailyTime.disabled = !daily.enabled;
+  const save = () => {
+    alertRules.global.daily = { enabled: dailyEnabled.checked, time: dailyTime.value || DAILY_DEFAULT_TIME };
+    dailyTime.disabled = !dailyEnabled.checked;
+    saveAlertRules();
+  };
+  dailyEnabled.onchange = save;
+  dailyTime.onchange = save;
+})();
+// Weekly summary: one toast a week from the background server, on a chosen day and time.
+const weeklyEnabled = document.getElementById('weekly-enabled');
+const weeklyDay = document.getElementById('weekly-day');
+const weeklyTime = document.getElementById('weekly-time');
+(function initWeeklySummary() {
+  const weekly = alertRules.global.weekly || { enabled: false, day: 1, time: DAILY_DEFAULT_TIME };
+  weeklyEnabled.checked = weekly.enabled;
+  weeklyDay.value = String(weekly.day);
+  weeklyTime.value = weekly.time;
+  weeklyDay.disabled = weeklyTime.disabled = !weekly.enabled;
+  const save = () => {
+    alertRules.global.weekly = { enabled: weeklyEnabled.checked, day: Number(weeklyDay.value), time: weeklyTime.value || DAILY_DEFAULT_TIME };
+    weeklyDay.disabled = weeklyTime.disabled = !weeklyEnabled.checked;
+    saveAlertRules();
+  };
+  weeklyEnabled.onchange = save;
+  weeklyDay.onchange = save;
+  weeklyTime.onchange = save;
+})();
 muteAll.onchange = () => { alertRules.global.muted = muteAll.checked; alertRulesChanged(false); if (alertEventCtx) renderEventAlerts(); };
 
 function updateNotifyPanel() {

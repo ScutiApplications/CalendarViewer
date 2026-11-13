@@ -53,6 +53,7 @@ function agendaEventContent(arg) {
   appendConflictBadge(heading, p.conflicts);
   appendEventBell(heading, event);
   card.append(heading);
+  appendNoteBadge(heading, event);
   appendEventSummary(card, event);
   const details = [p.location, p.sourceDetails.map(source => source.name).join(', ')].filter(Boolean);
   if (details.length) card.append(create('span', 'agenda-detail', details.join(' · ')));

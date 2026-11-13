@@ -47,7 +47,7 @@ test('real calendar event pipeline honors calendar and cancellation filters befo
       { title: 'Cancelled planning', start, end, extendedProps: {} }
     ] }, { enabled: false, events: [{ title: 'Hidden planning', start, end, extendedProps: {} }] }],
     expandSources: list => deduplicateEvents(list.filter(s => s.enabled).flatMap(s => s.events)), markConflicts, visibleEvents,
-    hideCancelled: true, searchQuery: 'planning', CalendarSearch: Search,
+    hideCancelled: true, searchQuery: 'planning', searchFilters: {}, CalendarSearch: Search,
     updateSearchStatus: (matches, total) => { status = { matches, total }; }
   });
   const source = app.slice(app.indexOf('  events(info, ok, fail) {'), app.indexOf('  eventClick({ event })'));
@@ -58,4 +58,24 @@ test('real calendar event pipeline honors calendar and cancellation filters befo
   assert.equal(shown[0].title, 'Planning');
   assert.deepEqual([...shown[0].extendedProps.conflicts], ['Standup']);
   assert.deepEqual(status, { matches: 1, total: 2 });
+});
+
+test('filters keep one calendar or Teams meetings, with or without a query', () => {
+  const event = { title: 'Standup', extendedProps: { sourceDetails: [{ id: 'f1' }, { id: 'l2' }], location: 'Room' } };
+  assert.equal(Search.matches(event, '', { sourceId: 'f1' }), true);
+  assert.equal(Search.matches(event, '', { sourceId: 'x' }), false);
+  assert.equal(Search.matches(event, 'stand', { sourceId: 'l2' }), true);
+  assert.equal(Search.matches(event, 'zzz', { sourceId: 'l2' }), false);
+  assert.equal(Search.matches({ title: 'No calendar' }, '', { sourceId: 'f1' }), false);
+  assert.equal(Search.matches(event, '', { teamsOnly: true }), false);
+  assert.equal(Search.active('  ', {}), false);
+  assert.equal(Search.active('', { teamsOnly: true }), true);
+  assert.equal(Search.active('a', {}), true);
+});
+
+test('teams filter uses the page meeting-link finder', () => {
+  const context = vm.createContext({ findMeetingUrl: p => (p.description && p.description.includes('teams') ? { href: 'x' } : null) });
+  vm.runInContext(fs.readFileSync(path.join(__dirname, '../src/shared/search.js'), 'utf8'), context);
+  assert.equal(context.CalendarSearch.matches({ title: 'A', extendedProps: { description: 'teams link' } }, '', { teamsOnly: true }), true);
+  assert.equal(context.CalendarSearch.matches({ title: 'A', extendedProps: { description: 'none' } }, '', { teamsOnly: true }), false);
 });

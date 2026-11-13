@@ -1,3 +1,4 @@
+// @ts-check
 // Windows owns the encryption key. Credentials travel over private stdin/stdout pipes, never command arguments.
 const path = require('node:path');
 const { spawn } = require('node:child_process');

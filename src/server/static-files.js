@@ -1,3 +1,4 @@
+// @ts-check
 // Serves the page, shared scripts and vendor libraries from three public folders.
 const fs = require('fs');
 const path = require('path');
@@ -9,7 +10,7 @@ const STATIC_ROOTS = [
   ['/vendor/', path.join(ROOT, 'vendor')],
   ['/', path.join(ROOT, 'src', 'web')]
 ];
-const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8' };
+const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.png': 'image/png', '.woff2': 'font/woff2' };
 
 // Only files inside the three public folders are served; anything that escapes them is refused.
 async function staticFile(pathname) {

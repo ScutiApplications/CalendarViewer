@@ -32,7 +32,7 @@ test('navigation validates trusted dates and uid against actual expanded events'
 
 test('disabled UI stays hidden; enabled UI streams inert text, navigates known events and restores focus', async () => {
   class Element {
-    constructor() { this.hidden = true; this.disabled = false; this.textContent = ''; this.value = ''; this.children = []; this.listeners = {}; }
+    constructor() { this.hidden = true; this.disabled = false; this.textContent = ''; this.value = ''; this.children = []; this.listeners = {}; this.dataset = {}; }
     append(...nodes) { this.children.push(...nodes); }
     replaceChildren() { this.children = []; }
     addEventListener(name, fn) { this.listeners[name] = fn; }
@@ -40,7 +40,7 @@ test('disabled UI stays hidden; enabled UI streams inert text, navigates known e
     close() { this.open = false; this.listeners.close?.(); }
     focus() { this.focused = true; }
   }
-  const ids = ['open', 'dialog', 'question', 'thread', 'state', 'send', 'stop', 'retry', 'privacy', 'load', 'close', 'form', 'input-row', 'new', 'provider-pick', 'check'];
+  const ids = ['open', 'dialog', 'question', 'thread', 'state', 'send', 'stop', 'retry', 'setup', 'processing', 'privacy', 'load', 'close', 'form', 'input-row', 'new', 'provider-pick', 'check'];
   const elements = Object.fromEntries(ids.map(id => ['assistant-' + id, new Element()]));
   let enabled = false, calls = 0, navigated = false, opened = false;
   const known = { start: new Date('2026-11-05T09:00:00Z'), extendedProps: { uid: 'a' } };
@@ -83,11 +83,11 @@ test('disabled UI stays hidden; enabled UI streams inert text, navigates known e
 
 test('chat memory: sends earlier exchanges, applies summaries, New chat and the 5 minute expiry clear it', async () => {
   class Element {
-    constructor() { this.hidden = true; this.disabled = false; this.textContent = ''; this.value = ''; this.children = []; this.listeners = {}; }
+    constructor() { this.hidden = true; this.disabled = false; this.textContent = ''; this.value = ''; this.children = []; this.listeners = {}; this.dataset = {}; }
     append(...nodes) { this.children.push(...nodes); } replaceChildren() { this.children = []; }
     addEventListener(name, fn) { this.listeners[name] = fn; } showModal() { this.open = true; } close() { this.open = false; } focus() {}
   }
-  const ids = ['open', 'dialog', 'question', 'thread', 'state', 'send', 'stop', 'retry', 'privacy', 'load', 'close', 'form', 'input-row', 'new', 'provider-pick', 'check'];
+  const ids = ['open', 'dialog', 'question', 'thread', 'state', 'send', 'stop', 'retry', 'setup', 'processing', 'privacy', 'load', 'close', 'form', 'input-row', 'new', 'provider-pick', 'check'];
   const elements = Object.fromEntries(ids.map(id => ['assistant-' + id, new Element()]));
   const bodies = []; let timer = null, replies = [{ type: 'content', text: 'one' }, { type: 'done' }];
   const context = vm.createContext({
@@ -125,12 +125,12 @@ test('chat memory: sends earlier exchanges, applies summaries, New chat and the 
 
 test('Check Connection shows its result; the provider dropdown lists all providers but switches only to set-up ones', async () => {
   class Element {
-    constructor() { this.hidden = true; this.disabled = false; this.textContent = ''; this.value = ''; this.children = []; this.listeners = {}; this.options = []; }
+    constructor() { this.hidden = true; this.disabled = false; this.textContent = ''; this.value = ''; this.children = []; this.listeners = {}; this.dataset = {}; this.options = []; }
     append(...nodes) { this.children.push(...nodes); }
     replaceChildren(...nodes) { this.children = nodes; this.options = nodes; }
     addEventListener(name, fn) { this.listeners[name] = fn; } showModal() { this.open = true; } close() { this.open = false; } focus() {}
   }
-  const ids = ['open', 'dialog', 'question', 'thread', 'state', 'send', 'stop', 'retry', 'privacy', 'load', 'close', 'form', 'input-row', 'new', 'provider-pick', 'check'];
+  const ids = ['open', 'dialog', 'question', 'thread', 'state', 'send', 'stop', 'retry', 'setup', 'processing', 'privacy', 'load', 'close', 'form', 'input-row', 'new', 'provider-pick', 'check'];
   const elements = Object.fromEntries(ids.map(id => ['assistant-' + id, new Element()]));
   let testResult = { ok: true, model: 'MiniCPM' }, switched = null;
   const context = vm.createContext({

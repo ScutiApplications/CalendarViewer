@@ -36,7 +36,7 @@ test('calendar construction loads initial events without script-order errors', a
   const elements = new Map();
   const document = {
     getElementById(id) {
-      if (!elements.has(id)) elements.set(id, { getRootNode: () => ({}), addEventListener() {} });
+      if (!elements.has(id)) elements.set(id, { getRootNode: () => ({}), addEventListener() {}, classList: { toggle() {} }, setAttribute() {}, getAttribute: () => 'true', toggleAttribute() {} });
       return elements.get(id);
     }
   };

@@ -1,3 +1,4 @@
+// @ts-check
 // Deterministic calendar dates in the server's local timezone; range ends are exclusive.
 const WEEKDAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 const addDays = (date, days) => { const d = new Date(date); d.setDate(d.getDate() + days); return d; };
@@ -21,7 +22,7 @@ function resolveDate(value, now = Date.now()) {
 function resolveDateRange(start = 'today', end, now = Date.now()) {
   const from = resolveDate(start, now);
   const to = end === undefined ? addDays(from, /^(this|next) week$/i.test(start.trim()) ? 7 : 1) : resolveDate(end, now);
-  if (to <= from || to - from > 93 * 86400000) throw new Error('Range must be positive and at most 93 days.');
+  if (to <= from || +to - +from > 93 * 86400000) throw new Error('Range must be positive and at most 93 days.');
   return [from, to];
 }
 module.exports = { resolveDate, resolveDateRange, addDays };

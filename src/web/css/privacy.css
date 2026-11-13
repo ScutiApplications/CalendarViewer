@@ -8,7 +8,7 @@
 .policy-page nav, .policy-page footer { display: flex; flex-wrap: wrap; gap: 8px 20px; }
 .policy-page footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border); }
 .policy-page a, .policy-links a, .privacy-hint a, .privacy-dialog a, #assistant-hosted-note a { color: var(--accent); text-underline-offset: .2em; }
-.policy-page a:focus-visible, .policy-links a:focus-visible, .privacy-hint a:focus-visible, .privacy-dialog a:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+.policy-page a:focus-visible, .policy-links a:focus-visible, .privacy-hint a:focus-visible, .privacy-dialog a:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .policy-meta, .privacy-hint { color: var(--muted); }
 .privacy-hint { font-size: 12px; line-height: 1.6; }
 .policy-links { display: grid; gap: 12px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 12px; }

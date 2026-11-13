@@ -13,6 +13,7 @@ let responsiveMode = typeof window === 'undefined' ? 'desktop' : CalendarLayout.
 const savedView = store.get(CalendarLayout.viewKey(responsiveMode, VIEW_KEY));
 const initialView = CalendarLayout.view(responsiveMode, savedView);
 let searchQuery = '';
+let searchFilters = {}; // { sourceId, teamsOnly } from the search filters under the search box
 const searchInput = document.getElementById('event-search');
 const clearSearch = document.getElementById('clear-search');
 const searchStatus = document.getElementById('search-status');

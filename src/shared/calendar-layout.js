@@ -1,3 +1,4 @@
+// @ts-check
 // Shared policy for initial load, resizing and saved view preferences.
 (function (root) {
   const profiles = {

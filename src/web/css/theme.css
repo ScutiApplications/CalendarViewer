@@ -1,0 +1,137 @@
+/* Theme tokens for the workspace layout, on the original CalendarViewer palette. */
+:root {
+  --midnight: #242424; --canvas: #F5F5F5; --white: #FFFFFF;
+  --royal: #5B5FC7; --true-blue: #A6A7DC; --sky: #C0C1EC;
+  --red: #C4314B; --melon: #E8708A; --gold: #E0A100; --peach: #F3D58A;
+  --bg: var(--canvas); --panel: var(--white); --surface-muted: #FAF9F8;
+  --text: var(--midnight); --muted: #616161; --border: #E1DFDD;
+  --accent: var(--royal); --brand: var(--royal); --focus: var(--royal);
+  --brand-hover: #4F52B5; --on-accent: var(--white);
+  --danger: var(--red); --on-danger: var(--white); --warning: #8A6500;
+  --status-live: #107C41; /* Exception: only upcoming/live event status. */
+  --now-line: var(--danger); --shadow-ink: 24 24 27;
+  --header-bg: var(--midnight); --header-focus: var(--true-blue);
+  --header-border: #3C3C3C; --header-divider: rgb(246 243 240 / .28);
+  --warning-tint: color-mix(in srgb, var(--gold) 14%, var(--panel));
+  --chat-user-bg: var(--midnight); --chat-user-border: var(--midnight);
+  --up-next-bg: var(--midnight); --up-next-action: var(--true-blue);
+  --up-next-action-text: var(--midnight); --up-next-action-hover: var(--sky);
+}
+:root[data-theme=dark] {
+  /* Original CalendarViewer neutrals and softer accents for dark mode. */
+  --bg: #1F1F1F; --panel: #292929; --surface-muted: #333333;
+  --text: #F5F5F5; --muted: #C8C8C8; --border: #454545;
+  --accent: #A6A7DC; --brand: #5B5FC7; --focus: #C0C1EC;
+  --brand-hover: #4F52B5; --on-accent: #FAFAFA;
+  --danger: #FF99A4; --on-danger: #1F1F1F; --warning: #F5C542;
+  --header-bg: var(--bg); --header-focus: var(--focus); --header-border: var(--border);
+  --up-next-bg: var(--panel); --up-next-action: var(--brand);
+  --up-next-action-text: var(--on-accent); --up-next-action-hover: var(--brand-hover);
+  --status-live: #6FD08C; --shadow-ink: 0 0 0;
+  --chat-user-bg: var(--surface-muted); --chat-user-border: var(--border);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme=light]) {
+    /* Original CalendarViewer neutrals and softer accents for dark mode. */
+    --bg: #1F1F1F; --panel: #292929; --surface-muted: #333333;
+    --text: #F5F5F5; --muted: #C8C8C8; --border: #454545;
+    --accent: #A6A7DC; --brand: #5B5FC7; --focus: #C0C1EC;
+    --brand-hover: #4F52B5; --on-accent: #FAFAFA;
+    --danger: #FF99A4; --on-danger: #1F1F1F; --warning: #F5C542;
+    --header-bg: var(--bg); --header-focus: var(--focus); --header-border: var(--border);
+    --up-next-bg: var(--panel); --up-next-action: var(--brand);
+    --up-next-action-text: var(--on-accent); --up-next-action-hover: var(--brand-hover);
+    --status-live: #6FD08C; --shadow-ink: 0 0 0;
+    --chat-user-bg: var(--surface-muted); --chat-user-border: var(--border);
+  }
+}
+body { font-family: "Segoe UI", system-ui, sans-serif; }
+button, input, select, textarea { font-family: inherit; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+a:focus-visible, summary:focus-visible, .policy-page a:focus-visible,
+.privacy-dialog a:focus-visible { outline-offset: 2px; }
+/* The rounded composer supplies the textarea's visible keyboard focus ring. */
+#assistant-dialog #assistant-question:focus-visible { outline: 0; }
+
+/* The same 56px brand bar owns the first grid row at every breakpoint. */
+.app { grid-template-rows: 56px minmax(0, 1fr); }
+.compact-header {
+  grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between;
+  height: 56px; min-width: 0; gap: 8px; padding: 0 8px;
+  background: var(--header-bg); color: var(--canvas); border-bottom: 1px solid var(--header-border);
+}
+.compact-brand { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.compact-brand img { display: block; flex: none; width: auto; height: 40px; max-width: none; object-fit: contain; }
+.compact-brand > span { display: block; width: auto; height: auto; border-radius: 0; background: transparent; color: var(--canvas); }
+.compact-brand .brand-divider { flex: none; width: 1px; height: 22px; background: var(--header-divider); }
+.compact-brand .brand-title { font-size: 15px; font-weight: 600; line-height: 1.2; }
+.menu-toggle { display: none; }
+.compact-header .menu-toggle { flex: none; color: var(--canvas); background: transparent; border-color: var(--header-border); }
+.compact-header .menu-toggle:hover { background: var(--surface-muted); }
+.compact-header :focus-visible { outline-color: var(--header-focus); }
+@media (max-width: 1100px), (orientation: portrait) {
+  .app { grid-template-rows: 56px minmax(0, 1fr); }
+  .menu-toggle { display: grid; }
+  /* The drawer retains its modal backdrop and focus behavior below the brand row. */
+  #sidebar { top: 56px; }
+}
+
+.primary, #assistant-open, .date-picker-apply, #join, .detail-actions #join {
+  background: var(--brand); color: var(--on-accent); border-color: var(--brand);
+  border-radius: 4px; font-weight: 600;
+}
+.primary:hover, #assistant-open:hover, .date-picker-apply:hover, #join:hover { background: var(--brand-hover); }
+#assistant-dialog .chat-send { border-radius: 50%; }
+#assistant-open { opacity: 1; }
+.fc .fc-toolbar-title { font-weight: 700; letter-spacing: -.015em; }
+.fc .fc-button-active, .fc .fc-button-active:hover {
+  background: var(--brand) !important; color: var(--on-accent) !important; border-color: var(--brand) !important;
+}
+.fc .fc-button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; box-shadow: none; }
+.fc .fc-day-today .header-date { background: var(--brand); color: var(--on-accent); }
+.fc { --fc-today-bg-color: color-mix(in srgb, var(--accent) 5%, transparent); --fc-now-indicator-color: var(--now-line); }
+.fc .fc-event { border-left-width: 4px !important; }
+.event-card.canceled { opacity: 1; }
+.event-card.canceled .event-title, .month-chip.canceled .mc-title { color: var(--muted); }
+.event-title, .mc-title, .up-title { color: var(--text); }
+.event-time, .mc-time, .up-when { color: var(--muted); }
+.conflict-badge { background: var(--danger); color: var(--on-danger); border-color: var(--danger); }
+.now-chip { color: var(--on-danger); }
+.source-sync[data-state=stale], .source-sync[data-state=offline],
+.sync-strip[data-state=stale], .sync-strip[data-state=error] {
+  background: var(--warning-tint); color: var(--warning); border-radius: 4px;
+}
+.sync-strip[data-state=error] #status { color: var(--warning); }
+.sync-strip[data-state=error] .sync-refresh, .sync-strip[data-state=stale] .sync-refresh { color: var(--warning); }
+/* Red text requires a White backing in light mode, including sidebar errors on Canvas. */
+.source-sync[data-state=error], .startup-state.error, .src-menu button.danger,
+#backup-error, .chat-check.bad, .msg.bot.error .bubble, .assistant-error {
+  background: var(--panel); color: var(--danger);
+}
+.dlg-bar, .dlg-bar[data-state=done] { background: var(--detail-color, var(--accent)); }
+.offset-chip { background: color-mix(in srgb, var(--accent) 10%, var(--panel)); color: var(--accent); }
+.offset-chip button { color: inherit; }
+.offset-chip button:hover { color: var(--text); }
+.msg.user { background: var(--chat-user-bg); color: var(--canvas); border: 1px solid var(--chat-user-border); }
+#compact-up-next:not([hidden]) { background: var(--up-next-bg); color: var(--canvas); border: 1px solid var(--border); }
+.compact-next-label { color: var(--gold); }
+.compact-next-time { color: var(--canvas); }
+#compact-up-next button { background: var(--up-next-action); color: var(--up-next-action-text); border-color: var(--up-next-action); border-radius: 4px; font-weight: 600; }
+#compact-up-next button:hover { background: var(--up-next-action-hover); }
+.date-wheel-marker, .date-picker-band { background: var(--brand); }
+/* Keep the existing drag/scroll selection, with fully readable date labels. */
+.compact-calendar .compact-day { opacity: 1 !important; transform: none !important; }
+.compact-calendar .date-wheel-arrow { top: auto; bottom: 0; min-height: 44px; }
+#date-picker .date-picker-wheel button[aria-pressed=true] { color: var(--on-accent); }
+.date-wheel-viewport::before, .date-wheel-viewport::after { display: none; }
+.event-time, .mc-time, .now-chip, .up-when, .compact-next-time, .sync-strip,
+.source-sync, .fc-timegrid-slot-label, .fc-list-event-time, .sb-hours input,
+#event-time, #event-date, .agenda-detail, .date-picker-wheel, #compact-week,
+.date-picker-summary, .alert-summary, .offset-chip, time, input[type=time] {
+  font-variant-numeric: tabular-nums;
+}
+/* Agenda source colours stay in the event cell, with readable neutral text. */
+.fc .fc-list-event > .fc-list-event-title {
+  background: color-mix(in srgb, var(--card-accent) 18%, var(--panel));
+  border-left: 4px solid var(--card-accent);
+}

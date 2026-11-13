@@ -2,6 +2,8 @@
 (() => {
   const button = document.getElementById('check-updates');
   if (!button) return;
+  // Shown after a failed one-click update, so the person is never stuck.
+  const MANUAL_UPDATE_HELP = ' To update by hand, open View releases, download the ZIP, extract it and copy its files over your CalendarViewer folder. Your data is kept.';
   const version = document.getElementById('app-version');
   const status = document.getElementById('update-status');
   const release = document.getElementById('update-release');
@@ -9,7 +11,45 @@
   const note = document.getElementById('update-install-note');
   const settings = document.getElementById('update-settings');
   const progress = document.getElementById('update-progress');
-  let checking = false, installing = false, latest = null, reconnects = 0, startError = '';
+  const gate = document.getElementById('update-required');
+  const gateText = document.getElementById('update-required-text');
+  const gateInstall = document.getElementById('update-required-install');
+  const gateProgress = document.getElementById('update-required-progress');
+  const gateStatus = document.getElementById('update-required-status');
+  const gateRelease = document.getElementById('update-required-release');
+  let required = false;
+  // The panel mirrors the normal install controls, so one code path does the work.
+  function syncGate() {
+    if (!gate || !required) return;
+    gateInstall.disabled = install.disabled || installing;
+    gateInstall.textContent = installing ? install.textContent : install.disabled ? 'Installation unavailable' : 'Download and install';
+    gateInstall.ariaBusy = String(!!installing);
+    gateProgress.hidden = progress.hidden;
+    if (progress.value) gateProgress.value = progress.value; else gateProgress.removeAttribute('value');
+    gateStatus.textContent = status.textContent + (install.disabled && !installing && note.textContent ? ' ' + note.textContent : '');
+  }
+  function setRequired(result) {
+    if (!gate) return;
+    required = result.required === true && result.status === 'available';
+    if (!required) { if (gate.open) gate.close(); return; }
+    gateText.textContent = 'Version ' + result.latestVersion + ' must be installed before you can keep using Calendar Viewer. Your calendars, settings and notes are kept.';
+    gateRelease.href = result.releaseUrl; gateRelease.hidden = false;
+    if (!gate.open) gate.showModal();
+    syncGate();
+  }
+  if (gate) {
+    // A mandatory update cannot be dismissed: Escape and a stray close both reopen it.
+    gate.addEventListener('cancel', event => event.preventDefault());
+    gate.addEventListener('close', () => { if (required) gate.showModal(); });
+    gateInstall.onclick = () => install.click();
+    if (typeof MutationObserver === 'function') {
+      const watch = new MutationObserver(syncGate);
+      watch.observe(status, { childList: true, characterData: true, subtree: true });
+      watch.observe(install, { attributes: true, childList: true, characterData: true, subtree: true });
+      watch.observe(progress, { attributes: true });
+    }
+  }
+  let checking = false, installing = false, latest = null, reconnects = 0, startError = '', retryAfterCheck = false;
   const request = (route, options = {}, timeout = 15000) => apiAction(route, { ...options, signal: AbortSignal.timeout(timeout) });
   function busy(active, label = 'Download and install') {
     install.ariaBusy = String(active);
@@ -23,7 +63,7 @@
     installing = false; button.disabled = false;
     busy(false);
     install.disabled = !latest?.download || !latest?.installation?.supported;
-    status.hidden = false; status.textContent = message;
+    status.hidden = false; status.textContent = message + MANUAL_UPDATE_HELP;
   }
   apiJson('/api/version').then(data => { version.textContent = 'Version ' + data.version; }, () => { version.textContent = 'Version unavailable'; });
   function installState(state) {
@@ -73,16 +113,17 @@
     checking = true; button.disabled = true;
     button.ariaBusy = 'true'; button.textContent = 'Checking…';
     install.disabled = true;
-    status.hidden = false; status.textContent = 'Checking GitHub releases…';
+    status.hidden = false; status.textContent = 'Checking the release site…';
     release.hidden = true; release.removeAttribute('href');
     try {
       const result = await request('/api/updates/check', { method: 'POST' });
       latest = result;
+      setRequired(result);
       version.textContent = 'Version ' + result.currentVersion;
       install.hidden = result.status !== 'available';
       install.disabled = !result.download || !result.installation?.supported;
       note.hidden = result.status !== 'available';
-      note.textContent = result.installation?.unavailableReason || (!result.download ? 'Release has no verified installation ZIP yet.' : 'Downloads and installs this release, then restarts Calendar Viewer. Calendars, settings and built-in models are kept.');
+      note.textContent = !result.download ? 'This release has no verifiable checksum' : result.installation?.unavailableReason || 'Downloads and installs this release, then restarts Calendar Viewer. Calendars, settings and built-in models are kept.';
       install.title = install.disabled ? note.textContent : '';
       install.textContent = install.disabled ? 'Installation unavailable' : 'Download and install';
       if (result.status === 'available') {
@@ -90,13 +131,19 @@
         status.textContent = 'Version ' + result.latestVersion + ' is available.';
         release.href = result.releaseUrl; release.hidden = false;
       } else if (result.status === 'up-to-date') status.textContent = 'Calendar Viewer is up to date.';
+      else if (result.status === 'auth-required') {
+        settings.open = true; status.textContent = 'The release site asks for sign-in, so updates cannot be checked here. Open the release page to download the latest version.';
+      }
       else if (result.status === 'no-release') status.textContent = 'No stable release is published yet.';
       else throw new Error('Unexpected update response. Try again later.');
       if (installState(result.installation)) { reconnects = 0; setTimeout(pollInstallation, 1000); }
-    } catch (error) { status.textContent = 'Could not check for updates: ' + error.message; }
+    } catch (error) {
+      status.textContent = 'Could not check for updates: ' + error.message;
+    }
     finally {
       checking = false; button.disabled = installing;
       button.ariaBusy = 'false'; button.textContent = 'Check for updates';
+      if (retryAfterCheck && !installing) { retryAfterCheck = false; void check(); }
     }
   }
   button.onclick = check;

@@ -1,3 +1,4 @@
+// @ts-check
 // Self-contained built-in model: the official llama.cpp server program plus the MiniCPM5-2B weights, kept in data/llama.
 // Nothing is downloaded until startPull() is called (the sidebar's Download button). Every download is checked against the
 // SHA-256 that GitHub (release asset digest) and Hugging Face (LFS object id) publish. The server program runs on 127.0.0.1
@@ -36,13 +37,13 @@ async function freePort() {
   return new Promise((resolve, reject) => {
     const server = net.createServer();
     server.once('error', reject);
-    server.listen(0, '127.0.0.1', () => { const { port } = server.address(); server.close(() => resolve(port)); });
+    server.listen(0, '127.0.0.1', () => { const { port } = /** @type {import("node:net").AddressInfo} */ (server.address()); server.close(() => resolve(port)); });
   });
 }
 const run = (command, args, signal) => new Promise((resolve, reject) => {
   const child = spawn(command, args, { stdio: 'ignore', windowsHide: true, signal });
   child.once('error', reject);
-  child.once('exit', code => code === 0 ? resolve() : reject(new Error(`${command} exited with ${code}.`)));
+  child.once('exit', code => code === 0 ? resolve(undefined) : reject(new Error(`${command} exited with ${code}.`)));
 });
 
 function createLlamaEngine({ dir, fetch: fetchImpl = global.fetch, spawn: spawnImpl = spawn, detectDevice = probeDevice, cpuThreads = 0, platform = process.platform, arch = process.arch, idleMs = 15 * 60 * 1000, readyMs = 180000 }) {

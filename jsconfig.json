@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "nodenext",
+    "checkJs": false,
+    "noEmit": true,
+    "strict": false,
+    "noImplicitAny": false,
+    "skipLibCheck": true,
+    "types": ["node"]
+  },
+  "include": ["src/server/**/*.js", "src/shared/**/*.js", "src/shared/**/*.d.ts", "tools/**/*.js"],
+  "exclude": ["node_modules", "vendor", "dist"]
+}

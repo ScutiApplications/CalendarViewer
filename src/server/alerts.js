@@ -1,3 +1,4 @@
+// @ts-check
 // Background alert scheduler: sends Windows toasts for upcoming events even when the web page is closed.
 // The page pushes its alert rules and imported calendars here; feed links are fetched by this process.
 const path = require('path');
@@ -7,6 +8,7 @@ const { writeJsonAtomic, readJson } = require('./json-store');
 
 global.ICAL = require('../../vendor/ical.min.js');
 const logic = require('../shared/alert-logic.js');
+const insights = require('../shared/insights.js');
 
 const FEED_REFRESH_MS = 5 * 60000;
 const TICK_MS = 30000;
@@ -118,12 +120,49 @@ function createAlertService({ readFeeds, fetchText, notify = windowsToast, state
     }
   }
 
+  // Sends the once-a-day agenda summary when it is due. Uses cached feed data only, like check().
+  function checkDaily() {
+    const t = now();
+    const key = logic.dailyAgendaDue(state.rules, t, fired);
+    if (!key) return;
+    let text;
+    try {
+      const toMidnight = new Date(t).setHours(24, 0, 0, 0) - t;
+      text = logic.dailyAgendaText(logic.collectOccurrences(currentSources(readFeeds()), t, toMidnight), t);
+    } catch (e) { log('Daily agenda failed: ' + e.message); return; }
+    fired[key] = t;
+    try { writeJsonAtomic(firedFile, fired); }
+    catch (e) { log('Could not save ' + path.basename(firedFile) + ': ' + e.message); }
+    notify({ title: text.title, join: undefined, snoozeUrl: undefined, key: key }, text.body, err => { toastError = err; if (err) log('Windows toast failed: ' + err); });
+  }
+
+  // Sends the once-a-week summary of the next seven days when it is due. Cached feed data only, like checkDaily().
+  function checkWeekly() {
+    const t = now();
+    const key = logic.weeklyAgendaDue(state.rules, t, fired);
+    if (!key) return;
+    let text;
+    try {
+      const from = new Date(t); from.setHours(0, 0, 0, 0);
+      const to = new Date(from); to.setDate(to.getDate() + 7);
+      const events = logic.visibleEvents(logic.expandSources(currentSources(readFeeds()), from, to), true);
+      text = insights.weekNotification(insights.weekSummary(events, [from, to], undefined, t));
+    } catch (e) { log('Weekly summary failed: ' + e.message); return; }
+    fired[key] = t;
+    try { writeJsonAtomic(firedFile, fired); }
+    catch (e) { log('Could not save ' + path.basename(firedFile) + ': ' + e.message); }
+    notify({ title: text.title, join: undefined, snoozeUrl: undefined, key: key }, text.body, err => { toastError = err; if (err) log('Windows toast failed: ' + err); });
+  }
+
   function tick() {
     if (running) return running;
     running = Promise.resolve().then(async () => {
       try {
-        if (logic.maxConfiguredOffset(state.rules) || reminders.horizon()) await refreshFeeds(readFeeds());
+        const daily = !!state.rules.global.daily?.enabled || !!state.rules.global.weekly?.enabled;
+        if (logic.maxConfiguredOffset(state.rules) || reminders.horizon() || daily) await refreshFeeds(readFeeds());
         check(false);
+        checkDaily();
+        checkWeekly();
       } finally { running = null; }
     });
     return running;

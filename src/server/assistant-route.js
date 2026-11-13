@@ -1,3 +1,4 @@
+// @ts-check
 // Same-origin assistant routes, with independent limits and disconnect cancellation.
 const { readBody, send, sendJson, SECURITY_HEADERS } = require('./http');
 const { ServiceError, ServiceUnreachable, createModelClient } = require('./model-client');
@@ -17,7 +18,7 @@ function cleanHours(value) {
   const time = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
   return value && time.test(value.start) && time.test(value.end) && value.start !== value.end ? { start: value.start, end: value.end } : undefined;
 }
-function createAssistantRoute({ config, client, assistant, refuseUnlessLocalAction, saved = {}, persist = () => {}, env = process.env, createClient = createModelClient, engine = null, keyStorage = null, initializing = () => false }) {
+function createAssistantRoute({ config, client, assistant, refuseUnlessLocalAction, saved = /** @type {Record<string, any>} */ ({}), persist = /** @type {(value: Record<string, any>) => unknown} */ (() => {}), env = process.env, createClient = createModelClient, engine = null, keyStorage = null, initializing = () => false }) {
   let busy = false, saving = false, lastStatus = { reachable: false, model: null }, activeController = null;
   // The token is write-only: it is never sent to the browser.
   const hostedNames = Object.keys(PROVIDERS).filter(isHosted);
@@ -191,8 +192,8 @@ function createAssistantRoute({ config, client, assistant, refuseUnlessLocalActi
       if (queuedBytes > 1024 * 1024) { controller.abort(); return; }
       // A false write return is normal backpressure. Await its callback before the next write.
       pending = pending.then(() => new Promise(resolve => {
-        if (controller.signal.aborted || res.destroyed) { queuedBytes -= size; resolve(); return; }
-        res.write(line, error => { queuedBytes -= size; if (error) controller.abort(); resolve(); });
+        if (controller.signal.aborted || res.destroyed) { queuedBytes -= size; resolve(undefined); return; }
+        res.write(line, error => { queuedBytes -= size; if (error) controller.abort(); resolve(undefined); });
       })).catch(() => controller.abort());
     };
     res.writeHead(200, { 'Content-Type': 'application/x-ndjson; charset=utf-8', 'Cache-Control': 'no-store', ...SECURITY_HEADERS });

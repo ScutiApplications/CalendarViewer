@@ -18,6 +18,8 @@ function initAssistantUI() {
   const picker = document.getElementById('assistant-provider-pick');
   const check = document.getElementById('assistant-check');
   const sharing = document.getElementById('assistant-chat-consent');
+  const setup = document.getElementById('assistant-setup');
+  setup.onclick = () => { dialog.close(); document.getElementById('assistant-settings-open').click(); };
   // The chat is remembered in this page only: a summary of older exchanges plus up to 3 recent ones. It is dropped after
   // 5 minutes without use, on New chat, and on reload.
   const CHAT_MS = 5 * 60 * 1000;
@@ -41,6 +43,11 @@ function initAssistantUI() {
       }
       if (currentProvider && currentProvider !== data.provider) { active?.abort(); resetChat('Provider changed. Previous chat cleared.'); }
       currentProvider = data.provider;
+      const processing = document.getElementById('assistant-processing');
+      processing.textContent = data.provider === 'llamacpp' ? 'Runs on this PC' : 'Hosted AI · Sharing consent required';
+      processing.dataset.location = data.provider === 'llamacpp' ? 'local' : 'hosted';
+      setup.hidden = data.reachable;
+      setup.textContent = data.provider === 'llamacpp' ? 'Set up Ask Calendar' : 'Assistant settings';
       if (sharing) sharing.hidden = data.provider === 'llamacpp';
       launcher.hidden = !data.enabled;
       reachable = data.reachable;
@@ -57,7 +64,12 @@ function initAssistantUI() {
         'Assistant offline. Check the model service, then press Check Connection. After three failures, restart the calendar server.';
       send.disabled = !reachable || !!active || preparing;
       return data;
-    } catch { reachable = false; send.disabled = true; if (dialog.open) state.textContent = 'Assistant offline: calendar server unavailable.'; }
+    } catch {
+      reachable = false; send.disabled = true;
+      document.getElementById('assistant-processing').textContent = 'Processing location unavailable';
+      setup.hidden = false;
+      if (dialog.open) state.textContent = 'Assistant offline: calendar server unavailable.';
+    }
     finally { refresh.disabled = false; }
   }
   async function authorizeProvider() {

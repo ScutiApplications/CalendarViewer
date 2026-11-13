@@ -2,9 +2,8 @@
 #assistant-open { position: fixed; right: 24px; bottom: 24px; z-index: 8; height: 52px; min-width: 52px; min-height: 52px; padding: 0 13px; border-radius: 26px; display: inline-flex; align-items: center; justify-content: center; gap: 0; box-shadow: 0 3px 16px rgb(var(--shadow-ink) / .2); opacity: 0.55; transition: opacity 0.15s ease, gap 0.2s ease, padding 0.2s ease; }
 #assistant-open svg { flex: none; }
 .assistant-label { max-width: 0; overflow: hidden; white-space: nowrap; opacity: 0; transition: max-width 0.2s ease, opacity 0.15s ease; }
-/* Rotating glowing ring while idle; hidden once the label shows. */
-#assistant-open::before { content: ''; position: absolute; inset: -3px; border-radius: inherit; background: conic-gradient(from 0deg, transparent 0 8%, var(--accent) 92%, #fff 100%); -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px)); mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px)); filter: drop-shadow(0 0 5px var(--accent)); animation: assistant-spin 2.4s linear infinite; pointer-events: none; }
-@keyframes assistant-spin { to { transform: rotate(360deg); } }
+/* The launcher uses a contained solid brand fill. */
+#assistant-open::before { content: none; }
 #assistant-open:hover, #assistant-open:focus-visible, #assistant-open:active { opacity: 1; gap: 10px; padding: 0 20px 0 16px; }
 #assistant-open:hover .assistant-label, #assistant-open:focus-visible .assistant-label, #assistant-open:active .assistant-label { max-width: 160px; opacity: 1; }
 #assistant-open:hover::before, #assistant-open:focus-visible::before, #assistant-open:active::before { display: none; }
@@ -26,7 +25,7 @@
 .assistant-actions { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
 .assistant-actions button { min-height: 44px; border-radius: 8px; padding: 9px 16px; }
 #assistant-dialog button:disabled, #assistant-settings-dialog button:disabled { opacity: .55; cursor: not-allowed; }
-#assistant-dialog :focus-visible, #assistant-settings-dialog :focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+#assistant-dialog :focus-visible, #assistant-settings-dialog :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 #assistant-dialog ::selection, #assistant-settings-dialog ::selection { color: var(--on-accent); background: var(--accent); }
 #assistant-settings-form { display: grid; gap: 20px; margin: 0; }
 .assistant-settings .sb-switch { min-height: 44px; gap: 18px; font-size: 14px; }

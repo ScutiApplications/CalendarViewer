@@ -133,7 +133,7 @@ test('release notes appear once, wait for dialogs and do not reopen after reload
   const reload = browser({ values }); reload.load('release-notes-ui'); await settle();
   assert.equal(reload.element('release-notes-dialog').shown, undefined);
   await reload.element('show-release-notes').onclick();
-  assert.equal(reload.element('release-notes-content').children.length, 5);
+  assert.equal(reload.element('release-notes-content').children.length, Releases.through('1.0.4').length);
   const older = browser({ values, version: '1.0.2' }); older.load('release-notes-ui'); await settle();
   assert.equal(older.element('release-notes-dialog').shown, undefined);
   assert.equal(values.get(notesKey), '1.0.4');

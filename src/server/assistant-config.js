@@ -1,9 +1,10 @@
+// @ts-check
 // Runtime settings are unlocked by assistant-settings-store; disk keys are DPAPI envelopes. Environment variables override them.
 // provider: llamacpp (MiniCPM5-2B run by a llama.cpp server program the app downloads itself) or a hosted provider
 // (anthropic, openai, gemini) with an API key. Hosted providers never fall back to local models.
 const { PROVIDERS } = require('./providers');
 const os = require('node:os');
-const MODEL_ID = /^[A-Za-z0-9][A-Za-z0-9._:\/-]{0,99}$/;
+const MODEL_ID = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,99}$/;
 const oneLine = token => token.length <= 512 && !token.includes('\n') && !token.includes('\r');
 // Zero delegates both generation and prompt processing to llama.cpp's automatic defaults.
 const cpuThreadLimit = () => Math.max(1, typeof os.availableParallelism === 'function' ? os.availableParallelism() : os.cpus().length);

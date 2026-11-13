@@ -1,3 +1,4 @@
+// @ts-check
 // Durable deferred reminders. Only identity and timing are trusted from a saved snooze;
 // the scheduler supplies current calendar details and rules before delivery.
 const crypto = require('node:crypto');

@@ -186,7 +186,7 @@ test('"remaining" questions get only events that have not finished', async () =>
 
 test('a tool router limits the tools sent to the model', async () => {
   const defs = [{ name: 'a', description: 'A' }, { name: 'b', description: 'B' }, { name: 'c', description: 'C' }];
-  const seen = []; let turn = 0;
+  const seen = [];
   const client = { chat: async payload => { seen.push(payload.tools.map(t => t.name)); return { finish_reason: 'stop', content: 'hi' }; } };
   await createAssistant({ client, router: { select: async (_q, list) => list.slice(0, 1) }, tools: { definitions: defs.map(d => ({ ...d, inputSchema: { type: 'object', properties: {} } })), execute: async () => ({}) } }).answer('hello', { emit() {} });
   assert.deepEqual(seen[0], ['a']);

@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 global.ICAL = require('../vendor/ical.min.js');
 const { resolveDateRange } = require('../src/shared/assistant-dates');
-const { findFreeTime } = require('../src/shared/free-time');
+const { findFreeTime, proposalText } = require('../src/shared/free-time');
 const { createCalendarTools, TOOLS } = require('../src/server/calendar-tools');
 const logic = require('../src/shared/alert-logic');
 const { createMcpHandler } = require('../src/server/mcp');
@@ -124,4 +124,11 @@ test('insight tools compute busy time, gaps, next slot, countdowns, all-day and 
   const busy = await tools.execute('busiest_day', { start: '2026-11-05', end: '2026-11-07' });
   assert.equal(busy.busiest.date, '2026-11-05'); assert.equal(busy.lightest.date, '2026-11-06');
   await assert.rejects(tools.execute('search_events', { query: '' }));
+});
+
+test('proposal text lists the chosen times and the second zone', () => {
+  assert.equal(proposalText(30, '', []), '');
+  assert.equal(proposalText(45, 'Asia/Manila', [{ when: 'Mon 9:00', alt: 'Sun 21:00 (UTC)' }, { when: 'Tue 10:00' }]),
+    'I am free for 45 minutes at these times (Asia/Manila):\n- Mon 9:00  /  Sun 21:00 (UTC)\n- Tue 10:00');
+  assert.match(proposalText(30, '', [{ when: 'x' }]), /\(my local time\)/);
 });

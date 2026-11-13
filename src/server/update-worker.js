@@ -1,3 +1,4 @@
+// @ts-check
 // Standalone worker: copied outside application code before shutdown, so updates cannot replace it mid-run.
 const fs = require('node:fs/promises');
 const path = require('node:path');
@@ -22,15 +23,28 @@ async function checkedPath(root, relative) {
   for (const part of relative.split('/')) {
     target = path.join(target, part);
     const info = await fs.lstat(target).catch(error => { if (error.code !== 'ENOENT') throw error; });
-    if (info?.isSymbolicLink()) throw new Error('Update paths cannot contain filesystem links.');
+    if (/** @type {import("node:fs").Stats | undefined} */ (info)?.isSymbolicLink()) throw new Error('Update paths cannot contain filesystem links.');
   }
   return target;
 }
 
 async function writeResult(file, result) {
   await fs.mkdir(path.dirname(file), { recursive: true });
-  await fs.writeFile(file + '.tmp', JSON.stringify({ ...result, updatedAt: new Date().toISOString() }));
-  await fs.rename(file + '.tmp', file);
+  const body = JSON.stringify({ ...result, updatedAt: new Date().toISOString() });
+  // Windows refuses to replace a file another process (the worker, a status poll, antivirus) holds open.
+  // Use a unique staging name, retry the rename, and fall back to a direct write; the status file is small.
+  const staging = file + '.' + process.pid + '.' + Math.random().toString(36).slice(2) + '.tmp';
+  await fs.writeFile(staging, body);
+  for (let attempt = 0; ; attempt++) {
+    try { await fs.rename(staging, file); return; }
+    catch (error) {
+      if (!['EPERM', 'EBUSY', 'EACCES'].includes(error.code)) { await fs.rm(staging, { force: true }); throw error; }
+      if (attempt >= 9) break;
+      await delay(50 * (attempt + 1));
+    }
+  }
+  try { await fs.writeFile(file, body); }
+  finally { await fs.rm(staging, { force: true }); }
 }
 
 async function validateJob(job) {

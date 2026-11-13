@@ -47,7 +47,8 @@
         await request('/api/backup/restore',{backup:next,previous});
         applyClientState(next);
         pending=null;completed=true;dialog.close();onRestored(next);
-      } catch(e) {
+      } catch(caught) {
+        let e=caught; // the message shown may gain a recovery note
         if(restoreAttempted) {
           try {
             await request('/api/backup/restore',{backup:previousBackup,previous:next,preserveRecovery:true});

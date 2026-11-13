@@ -1,3 +1,4 @@
+// @ts-check
 // Local server: serves the web page and fetches ICS links server-side (browsers block them via CORS).
 // Feed links are stored in data/feeds.json (gitignored). Listens on 127.0.0.1 only.
 const http = require('http');
@@ -12,6 +13,7 @@ const { createAlertService } = require('./alerts'); // defines the global ICAL t
 const { createStartupService } = require('./startup');
 const { createBackupService } = require('./backups');
 const { createMcpHandler } = require('./mcp');
+const { createMcpTokenStore } = require('./mcp-token-store');
 const { createCalendarTools } = require('./calendar-tools');
 const { assistantConfig, savedSettings } = require('./assistant-config');
 const { createAssistantSettingsStore } = require('./assistant-settings-store');
@@ -22,9 +24,10 @@ const { createAssistantRoute } = require('./assistant-route');
 const { createLlamaEngine } = require('./llama-engine');
 const { createLayaEngine } = require('./laya-engine');
 const { createBuiltinModels } = require('./builtin-models');
-const { normalizeFeedUrl } = require('../shared/alert-logic.js');
+const { normalizeFeedUrl, feedUrlKey } = require('../shared/alert-logic.js');
 const { createUpdateChecker } = require('./updates');
 const { createUpdateInstaller } = require('./update-install');
+const { trackVersion } = require('./version-state');
 
 const PORT = Number(process.env.PORT) || 3000;
 const ROOT = path.join(__dirname, '..', '..');
@@ -37,6 +40,7 @@ const updateInstaller = createUpdateInstaller({ root: ROOT, dataDir: DATA_DIR, v
   restart: () => setTimeout(shutdown, 500).unref() });
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
+const versionState = trackVersion({ file: path.join(DATA_DIR, 'version-state.json'), version: VERSION });
 
 const readFeeds = () => readJson(FEEDS_FILE, []);
 const writeFeeds = feeds => writeJsonAtomic(FEEDS_FILE, feeds, { space: 2 });
@@ -52,6 +56,7 @@ const alerts = createAlertService({
   snoozeBaseUrl: `http://localhost:${PORT}`
 });
 const mcp = createMcpHandler({ sources: alerts.sources });
+const mcpTokens = createMcpTokenStore({ file: path.join(DATA_DIR, 'mcp-token.json') });
 const backups = createBackupService({ readFeeds, writeFeeds, alerts, recoveryFile: path.join(DATA_DIR, 'backup-recovery.json') });
 
 const startup = createStartupService();
@@ -97,6 +102,10 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/mcp') {
       if (!isLocalHost(req) || req.headers.origin) return send(res, 403, 'Forbidden');
       if (req.method !== 'POST') return send(res, 405, 'Use POST');
+      if (!mcpTokens.authorize(req.headers.authorization)) {
+        res.setHeader('WWW-Authenticate', 'Bearer realm="CalendarViewer"');
+        return sendJson(res, 401, { jsonrpc: '2.0', id: null, error: { code: -32001, message: 'Unauthorized' } });
+      }
       let message;
       try { message = JSON.parse(await readBody(req, 1e6)); }
       catch { return sendJson(res, 400, { jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error.' } }); }
@@ -104,7 +113,19 @@ const server = http.createServer(async (req, res) => {
       return reply === null ? send(res, 202, '') : sendJson(res, 200, reply);
     }
 
-    if (url.pathname === '/api/version' && req.method === 'GET') return sendJson(res, 200, { version: VERSION, pid: process.pid });
+    if (url.pathname === '/api/version' && req.method === 'GET') return sendJson(res, 200, { version: VERSION, pid: process.pid, announceFrom: versionState.announceFrom() });
+    if (url.pathname === '/api/version/seen' && req.method === 'POST') {
+      if (refuseUnlessLocalAction(req, res)) return;
+      versionState.acknowledge();
+      return send(res, 204, '');
+    }
+    if (url.pathname === '/api/mcp/token' || url.pathname === '/api/mcp/token/status') {
+      if (refuseUnlessLocalAction(req, res)) return;
+      if (url.pathname.endsWith('/status')) return req.method === 'GET' ? sendJson(res, 200, mcpTokens.status()) : send(res, 405, 'Use GET.');
+      if (req.method === 'POST') return sendJson(res, 200, mcpTokens.generate());
+      if (req.method === 'DELETE') return sendJson(res, 200, mcpTokens.revoke());
+      return send(res, 405, 'Method not allowed.');
+    }
     if (url.pathname === '/api/updates/check') {
       if (refuseUnlessLocalAction(req, res)) return;
       if (req.method !== 'POST') return send(res, 405, 'Use POST.');
@@ -170,8 +191,11 @@ const server = http.createServer(async (req, res) => {
         const { name, url: link, color } = JSON.parse(await readBody(req));
         const href = normalizeFeedUrl(link);
         if (!href) return send(res, 400, 'Link must start with https:// or webcal://');
+        const existing = readFeeds();
+        const same = existing.find(f => feedUrlKey(f.url) === feedUrlKey(href));
+        if (same) return send(res, 409, 'This calendar link is already added as "' + same.name + '".');
         const feed = { id: crypto.randomUUID(), name: String(name || 'Calendar').trim(), color, url: href };
-        writeFeeds([...readFeeds(), feed]);
+        writeFeeds([...existing, feed]);
         return sendJson(res, 201, { id: feed.id, name: feed.name, color: feed.color });
       }
     }
@@ -187,7 +211,7 @@ const server = http.createServer(async (req, res) => {
       }
       if (m[1] === 'ics' && req.method === 'GET') {
         try { return send(res, 200, await fetchFeedText(feed), 'text/calendar; charset=utf-8'); }
-        catch (e) { return send(res, 502, /^HTTP \d+$/.test(e.message) ? `Upstream returned ${e.message}` : e.message); }
+        catch (e) { return send(res, 502, e.message); }
       }
     }
 
@@ -220,7 +244,7 @@ function shutdown() {
   llamaEngine.stop();
   server.close(() => process.exit(0));
   server.closeIdleConnections();
-  setTimeout(() => process.exit(0), 5000).unref();
+  setTimeout(() => process.exit(0), 10000).unref();
 }
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);

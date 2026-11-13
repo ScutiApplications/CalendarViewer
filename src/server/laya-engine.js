@@ -1,3 +1,4 @@
+// @ts-check
 // Application-owned Laya runtime and checkpoint. Only startPull may contact download servers.
 const fs = require('node:fs/promises');
 const { createReadStream } = require('node:fs');
@@ -33,7 +34,7 @@ async function verifiedCheckpoint(target, file, signal) {
 }
 
 function createLayaEngine({ dir, model = checkpoint, platform = process.platform, arch = process.arch, fetch: fetchImpl = global.fetch,
-  spawn: spawnImpl = spawn, run = execute, installRuntime, idleMs = 15 * 60 * 1000, timeoutMs = 120000, verificationTimeoutMs = 10 * 60 * 1000 }) {
+  spawn: spawnImpl = spawn, run = execute, installRuntime = undefined, idleMs = 15 * 60 * 1000, timeoutMs = 120000, verificationTimeoutMs = 10 * 60 * 1000 }) {
   dir = path.resolve(dir);
   const project = path.join(__dirname, '..', 'laya'), folder = path.join(dir, 'model');
   const python = path.join(dir, 'runtime', platform === 'win32' ? 'Scripts/python.exe' : 'bin/python');
@@ -147,7 +148,7 @@ function createLayaEngine({ dir, model = checkpoint, platform = process.platform
     if (active) { const request = active; active = null; request.reject(error); }
     child?.kill();
   }
-  async function predict(text, definitions, { signal } = {}) {
+  async function predict(text, definitions, { signal } = /** @type {{ signal?: AbortSignal }} */ ({})) {
     const before = generation;
     signal?.throwIfAborted();
     if (!(await state()).installed) throw new Error('Download Laya and MiniCPM in assistant settings first.');

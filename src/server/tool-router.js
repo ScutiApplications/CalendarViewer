@@ -1,6 +1,7 @@
+// @ts-check
 // Conservative per-tool decisions allow compound questions; any uncertainty keeps the entire catalog.
 function createLayaRouter({ engine, enabled = () => true }) {
-  async function select(question, definitions, { signal } = {}) {
+  async function select(question, definitions, { signal } = /** @type {{ signal?: AbortSignal }} */ ({})) {
     signal?.throwIfAborted();
     if (!enabled() || definitions.length < 2) return definitions;
     try {

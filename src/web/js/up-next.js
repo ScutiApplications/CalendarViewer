@@ -29,23 +29,28 @@ function renderUpNext() {
   let items = [];
   try { items = upNext(sources, now); } catch { /* Keep the rail empty if a calendar cannot be read. */ }
   upNextRail.replaceChildren();
+  upNextRail.append(create('div', 'up-eyebrow', new Date(now).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })));
   upNextRail.append(create('h2', '', 'Up next'));
+  upNextRail.append(create('p', 'up-intro', 'A clear view of what’s ahead.'));
   if (!items.length) {
     upNextRail.append(create('p', 'up-empty', 'Nothing in the next 7 days.'));
     return;
   }
   const clock = ms => new Date(ms).toLocaleTimeString([], CLOCK);
-  items.forEach((o, i) => {
+  items.slice(0, 3).forEach(o => {
     const item = create('div', 'up-item');
+    item.style.setProperty('--card-accent', o.sourceDetails[0]?.color || DEFAULT_SOURCE_COLOR);
+    item.append(create('div', 'up-countdown', 'in ' + formatRemaining(o.start - now)));
     item.append(create('div', 'up-title', o.title));
     item.append(createSourceDots(o.sourceDetails));
     const bell = alertIndicator(o.key, o.sourceKeys, Infinity);
     if (bell) item.append(bell);
     const day = new Date(o.start).toDateString() === new Date(now).toDateString() ? '' : new Date(o.start).toLocaleDateString(undefined, { weekday: 'short' }) + ' ';
     const when = create('div', 'up-when', o.allDay ? (day || 'Today ') + 'all day'
-      : (i === 0 ? 'in ' + formatRemaining(o.start - now) + ' · ' : '') + day + clock(o.start));
+      : day + clock(o.start) + (o.end ? ' – ' + clock(o.end) : ''));
     item.append(when);
-    if (i === 0 && o.join) item.append(externalLink(o.join, 'Join', 'up-join'));
+    if (o.sourceDetails.length) item.append(create('div', 'up-calendar', o.sourceDetails.map(s => s.name).join(', ')));
+    if (o.join) item.append(externalLink(o.join, 'Join meeting ↗', 'up-join'));
     upNextRail.append(item);
   });
 }

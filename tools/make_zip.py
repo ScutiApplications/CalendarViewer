@@ -2,6 +2,7 @@
 """Package runtime files from a committed revision; --ref also rebuilds older releases."""
 
 import argparse
+import hashlib
 import asyncio
 from copy import copy
 import re
@@ -92,7 +93,10 @@ async def main():
         await git("archive", "--format=zip", "--prefix=" + PREFIX, "--output=" + str(source), revision, "--", *files)
         await asyncio.to_thread(write_portable_zip, source, destination, files, version)
         await asyncio.to_thread(destination.replace, output)
-    print(f"Created {output} ({len(files)} files)")
+    digest = await asyncio.to_thread(lambda: hashlib.sha256(output.read_bytes()).hexdigest())
+    checksum = output.with_name("SHA256SUMS")
+    await asyncio.to_thread(checksum.write_text, f"{digest}  {output.name}\n", encoding="utf-8")
+    print(f"Created {output} ({len(files)} files) and {checksum}")
 
 
 if __name__ == "__main__":

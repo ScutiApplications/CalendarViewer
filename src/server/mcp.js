@@ -1,3 +1,4 @@
+// @ts-check
 // MCP protocol adapter; calendar behavior lives in calendar-tools.js.
 const { createCalendarTools, TOOLS } = require('./calendar-tools');
 const PROTOCOLS = ['2025-06-18', '2025-03-26', '2024-11-05'];

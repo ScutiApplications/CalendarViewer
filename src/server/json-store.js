@@ -1,6 +1,7 @@
+// @ts-check
 const fs = require('fs');
 
-function writeJsonAtomic(file, value, { space, mode } = {}) {
+function writeJsonAtomic(file, value, { space, mode } = /** @type {{ space?: number | string, mode?: number }} */ ({})) {
   const staging = file + '.tmp';
   fs.writeFileSync(staging, JSON.stringify(value, null, space), mode === undefined ? undefined : { mode });
   fs.renameSync(staging, file);

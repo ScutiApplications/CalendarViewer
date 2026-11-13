@@ -1,13 +1,16 @@
+// @ts-check
 // Bounded, checksummed model/runtime downloads. No file is accepted until its SHA-256 matches.
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { Transform, Readable } = require('node:stream');
 const { pipeline } = require('node:stream/promises');
+const { fetchUpdateAsset } = require('./update-download');
 
-async function performDownload({ url, target, sha256, maxBytes, fetch: fetchImpl = global.fetch, onBytes = () => {}, signal }) {
+async function performDownload({ url, target, sha256, maxBytes, fetch: fetchImpl = global.fetch, onBytes = /** @type {(got: number, total: number) => void} */ (() => {}), signal, headers, allowedHost }) {
   if (!/^[a-f0-9]{64}$/i.test(sha256)) throw new Error('Missing download checksum.');
-  const response = await fetchImpl(url, { headers: { 'User-Agent': 'CalendarViewer' }, redirect: 'follow', signal });
+  const response = allowedHost ? await fetchUpdateAsset(url, { fetch: fetchImpl, headers, allowedHost, signal }) :
+    await fetchImpl(url, { headers: { 'User-Agent': 'CalendarViewer' }, redirect: 'follow', signal });
   if (!response.ok || !response.body) throw new Error(`Download failed (${response.status}).`);
   const total = Number(response.headers.get('content-length')) || 0;
   if (total > maxBytes) { await response.body.cancel(); throw new Error('The download is larger than allowed.'); }
@@ -34,7 +37,7 @@ async function withTimeout(signal, timeoutMs, operation) {
   finally { clearTimeout(timer); signal?.removeEventListener('abort', cancel); }
 }
 const downloadVerified = options => withTimeout(options.signal, 2 * 60 * 60 * 1000, signal => performDownload({ ...options, signal }));
-const fetchJson = (url, { fetch: fetchImpl = global.fetch, signal, headers = {} } = {}) => withTimeout(signal, 20000, async requestSignal => {
+const fetchJson = (url, { fetch: fetchImpl = global.fetch, signal, headers = {} } = /** @type {{ fetch?: typeof fetch, signal?: AbortSignal, headers?: Record<string, string> }} */ ({})) => withTimeout(signal, 20000, async requestSignal => {
   const response = await fetchImpl(url, { headers: { 'User-Agent': 'CalendarViewer', ...headers }, signal: requestSignal });
   if (!response.ok) throw new Error(`${new URL(url).host} answered ${response.status}.`);
   return response.json();

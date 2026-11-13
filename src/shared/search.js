@@ -1,17 +1,27 @@
+// @ts-check
 (function (root, factory) {
-  const api = factory();
+  const api = factory(root);
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.CalendarSearch = api;
-})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
-  function matches(event, query) {
+})(typeof globalThis !== 'undefined' ? globalThis : this, function (root) {
+  /**
+   * Optional filters: { sourceId } keeps events from one calendar; { teamsOnly } keeps events with a Teams meeting link.
+   * @param {any} event @param {string} query @param {{ sourceId?: string, teamsOnly?: boolean }} [filters]
+   */
+  function matches(event, query, filters = {}) {
+    const props = (event && event.extendedProps) || {};
+    if (filters.sourceId && !(props.sourceDetails || []).some(source => String(source.id) === String(filters.sourceId))) return false;
+    if (filters.teamsOnly) {
+      const find = /** @type {any} */ (root).findMeetingUrl;
+      if (typeof find !== 'function' || !find(props)) return false;
+    }
     const term = String(query || '').trim().toLowerCase();
     if (!term) return true;
-    const p = event.extendedProps || {};
-    return [event.title, p.location, p.description, p.people]
+    return [event.title, props.location, props.description, props.people]
       .some(value => String(value || '').toLowerCase().includes(term));
   }
 
-  // Assistant search (the page search above stays title/location only).
+  // Assistant search (word matching, ranking and typo tolerance; the page search above is plain substring).
   const wordsOf = text => String(text || '').toLowerCase().match(/[\p{L}\p{N}]+/gu) || [];
   // shortcut: plural stripping only drops a final "s"; no real stemmer, upgrade if irregular plurals matter.
   // Small models pass whole questions ("when is the budget review"); filler words must not have to match.
@@ -25,6 +35,7 @@
     return x.slice(1) === y.slice(1) || x.slice(1) === y || x === y.slice(1);
   }
   // Weight of the field a word was found in: title beats people and location, which beat the description.
+  /** @type {[string, number][]} */
   const FIELDS = [['title', 3], ['people', 2], ['location', 2], ['description', 1]];
   function fieldWords(event) {
     const p = event.extendedProps || {};
@@ -53,5 +64,6 @@
     return total;
   }
   const matchesWords = (event, query, options) => score(event, query, options) > 0;
-  return { matches, matchesWords, score, stem, wordsOf };
+  const active = (query, filters = {}) => !!(String(query || '').trim() || filters.sourceId || filters.teamsOnly);
+  return { matches, active, matchesWords, score, stem, wordsOf };
 });

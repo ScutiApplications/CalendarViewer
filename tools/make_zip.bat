@@ -8,5 +8,5 @@ set /p VER=<"%ROOT%\VERSION"
 start "" explorer /select,"%ROOT%\dist\CalendarViewer-%VER%.zip"
 start "" "https://github.com/ScutiApplications/CalendarViewer/releases/new?tag=v%VER%"
 echo.
-echo Drag dist\CalendarViewer-%VER%.zip onto the release page, paste the notes, and publish.
+echo Drag dist\CalendarViewer-%VER%.zip and dist\SHA256SUMS onto the release page, paste the notes, and publish.
 pause

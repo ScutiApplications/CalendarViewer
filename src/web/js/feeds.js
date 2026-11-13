@@ -59,9 +59,10 @@ async function fetchFeeds() {
       source.events = events;
       source.fetchedAt = Date.now();
       source.failed = false;
+      source.error = '';
       cacheFeedSnapshot(f, icsText);
     } catch (error) {
-      if (sources.includes(source)) source.failed = true;
+      if (sources.includes(source)) { source.failed = true; source.error = error.message; }
       throw error;
     } finally {
       if (sources.includes(source)) source.fetching = false;

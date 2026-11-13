@@ -1,3 +1,4 @@
+// @ts-check
 (function (root) {
   function write(storage, values, validateOnly = false) {
     const staging = 'ics-calendar-viewer.restore-staging';

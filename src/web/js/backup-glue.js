@@ -6,6 +6,7 @@ function getBackupClientState() {
     localSources: localSourceSnapshots(),
     feedPreferences: feedPreferenceSnapshots(),
     alertRules,
+    notes: eventNotes,
     preferences: {
       theme: store.get(THEME_KEY) || 'system', workingHours,
       autoRefreshMinutes: Number(autoRefresh.value), hideCancelled, view: calendar.view.type
@@ -20,6 +21,7 @@ function applyBackupClientState(backup, { validateOnly = false } = {}) {
     [FEED_PREFERENCES_KEY]: JSON.stringify(next.feedPreferences),
     [FEED_CACHE_KEY]: '[]',
     [ALERT_RULES_KEY]: JSON.stringify(next.alertRules),
+    ...(next.notes ? { [NOTES_KEY]: JSON.stringify(next.notes) } : {}),
     [THEME_KEY]: p.theme,
     [HOURS_KEY]: JSON.stringify(p.workingHours),
     [AUTO_REFRESH_KEY]: String(p.autoRefreshMinutes),

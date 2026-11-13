@@ -47,6 +47,11 @@ test('automatic checks report unavailable installs, offline checks and failed in
   assert.match(elements['update-status'].textContent, /Offline/); assert.equal(elements['check-updates'].disabled, false);
   result = { status: 'no-release', currentVersion: '1.1.0' }; await elements['check-updates'].onclick();
   assert.match(elements['update-status'].textContent, /No stable release/i);
+  result = { status: 'auth-required', currentVersion: '1.1.0' }; await elements['check-updates'].onclick();
+  assert.equal(elements['update-status'].textContent, 'The release site asks for sign-in, so updates cannot be checked here. Open the release page to download the latest version.');
+  assert.equal(elements['install-update'].hidden, true);
+  result = { status: 'available', currentVersion: '1.1.0', latestVersion: '1.2.0', download: null, installation: { supported: true } }; await elements['check-updates'].onclick();
+  assert.equal(elements['update-install-note'].textContent, 'This release has no verifiable checksum');
   result = { status: 'available', currentVersion: '1.1.0', latestVersion: '1.2.0', download: {}, installation: { phase: 'failed', supported: true, message: 'Checksum mismatch' } };
   await elements['check-updates'].onclick();
   assert.match(elements['update-status'].textContent, /Checksum mismatch/);

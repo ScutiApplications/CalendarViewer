@@ -1,3 +1,4 @@
+// @ts-check
 // Bounded read-only conversation; feed fields are data and never become instructions or HTML.
 function boundedData(value, budget = { left: 10000 }) {
   if (budget.left <= 0) return '[truncated]';

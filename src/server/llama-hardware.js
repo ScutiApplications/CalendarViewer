@@ -1,9 +1,10 @@
+// @ts-check
 // Ask the installed inference runtime which GPU drivers actually work; never invoke a shell.
 const { execFile } = require('node:child_process');
 const { promisify } = require('node:util');
 const execute = promisify(execFile);
 
-async function detectDevice(binary, { run = execute, signal } = {}) {
+async function detectDevice(binary, { run = execute, signal } = /** @type {{ run?: typeof execute, signal?: AbortSignal }} */ ({})) {
   signal?.throwIfAborted();
   try {
     const { stdout = '', stderr = '' } = await run(binary, ['--list-devices'], { windowsHide: true, timeout: 8000, maxBuffer: 65536, signal });

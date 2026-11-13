@@ -40,3 +40,16 @@ test('failed compensation preserves the original recovery snapshot and rolls bac
  // A rejected first restore might never have changed the server feeds: compensation still succeeds.
  svc.restoreBackup({backup:original,previous:next,preserveRecovery:true});assert.equal(stored[0].id,'one');
 }));
+
+test('backup keeps optional private notes and rejects malformed ones', () => {
+  const Backup = require('../src/shared/backup.js');
+  const base = { format: 'ics-calendar-viewer-backup', version: 1, createdAt: '2026-11-13T10:00:00.000Z', feeds: [], localSources: [], feedPreferences: [],
+    alertRules: { global: { muted: false }, calendars: {}, events: {} },
+    preferences: { theme: 'system', workingHours: { start: '09:00', end: '17:00' }, autoRefreshMinutes: 5, hideCancelled: false, view: 'timeGridWeek' } };
+  assert.equal(Backup.validateBackup(base).notes, undefined);
+  const withNotes = Backup.validateBackup({ ...base, notes: { 'uid-1|1700000000000': { text: 'Bring slides', updated: '2026-11-13T10:00:00.000Z', extra: 'dropped' } } });
+  assert.deepEqual(withNotes.notes, { 'uid-1|1700000000000': { text: 'Bring slides', updated: '2026-11-13T10:00:00.000Z' } });
+  assert.throws(() => Backup.validateBackup({ ...base, notes: { a: { text: '', updated: 'x' } } }), /note text/);
+  assert.throws(() => Backup.validateBackup({ ...base, notes: { a: { text: 'x'.repeat(2001), updated: 'x' } } }), /note text/);
+  assert.throws(() => Backup.validateBackup({ ...base, notes: [] }), /notes must be an object/);
+});

@@ -112,3 +112,13 @@ test('pruneFired drops markers older than a day and keeps recent ones', () => {
   L.pruneFired(fired, now);
   assert.deepEqual(Object.keys(fired), ['recent', 'future']);
 });
+
+test('feedUrlKey treats the same calendar link as equal and ignores case, fragment, trailing slash and webcal', () => {
+  const key = L.feedUrlKey('https://Example.com/cal/work.ics');
+  assert.equal(L.feedUrlKey('webcal://example.com/cal/work.ics#top'), key);
+  assert.equal(L.feedUrlKey('  https://example.com/cal/work.ics  '), key);
+  assert.equal(L.feedUrlKey('https://example.com/cal/'), L.feedUrlKey('https://example.com/cal'));
+  assert.notEqual(L.feedUrlKey('https://example.com/cal/work.ics?token=2'), key);
+  assert.notEqual(L.feedUrlKey('https://example.com/cal/home.ics'), key);
+  assert.equal(L.feedUrlKey('ftp://example.com/a.ics'), null);
+});

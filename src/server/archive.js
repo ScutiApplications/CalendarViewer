@@ -1,3 +1,4 @@
+// @ts-check
 // Minimal zip reader on node:zlib, so the app can unpack a downloaded program without any dependency.
 // shortcut: no ZIP64, no encryption, no multi-disk archives; fine for the llama.cpp release files (all under 4 GB).
 const fsp = require('node:fs/promises');

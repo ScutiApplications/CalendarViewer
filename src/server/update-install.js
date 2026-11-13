@@ -1,3 +1,4 @@
+// @ts-check
 // Download and staging run asynchronously; only an explicit local action can start installation.
 const fs = require('node:fs/promises');
 const path = require('node:path');
@@ -57,7 +58,7 @@ function createUpdateInstaller({ root, dataDir, version, checker, port, platform
       await fs.mkdir(directory, { recursive: true });
       const work = await fs.mkdtemp(path.join(directory, 'job-'));
       const zip = path.join(work, 'release.zip'), unpacked = path.join(work, 'unpacked');
-      await download({ ...release.download, target: zip, maxBytes: 100 * 1024 * 1024, signal: AbortSignal.timeout(10 * 60 * 1000), onBytes(received, total) { current = { ...current, received, total: total || release.download.size }; } });
+      await download({ ...release.download, ...await checker.downloadOptions?.(), target: zip, maxBytes: 100 * 1024 * 1024, signal: AbortSignal.timeout(10 * 60 * 1000), onBytes(received, total) { current = { ...current, received, total: total || release.download.size }; } });
       current = { phase: 'preparing', version: release.latestVersion };
       await extract(zip, unpacked, { maxBytes: 256 * 1024 * 1024 });
       const stage = path.join(unpacked, 'CalendarViewer');
@@ -80,9 +81,10 @@ function createUpdateInstaller({ root, dataDir, version, checker, port, platform
       await writeResult(statusFile, current);
       restart();
     } catch (error) {
-      current = { phase: 'failed', version: release.latestVersion, message: error.message };
-      await writeResult(statusFile, current).catch(() => {});
+      const failed = { phase: 'failed', version: release.latestVersion, message: error.message };
+      await writeResult(statusFile, failed).catch(() => {});
       busy = false;
+      current = failed;
     }
   }
   async function start(expectedVersion) {

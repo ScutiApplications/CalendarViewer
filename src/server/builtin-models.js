@@ -1,3 +1,4 @@
+// @ts-check
 // One installation/status surface for the two cooperating built-in models.
 const { setTimeout: delay } = require('node:timers/promises');
 

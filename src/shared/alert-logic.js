@@ -1,3 +1,4 @@
+// @ts-check
 // Shared by the page (index.html loads it as a script) and the server (alerts.js requires it).
 // Needs a global ICAL (ical.js). Pure functions; no DOM access.
 const MAX_OCCURRENCES = 2000;
@@ -6,7 +7,7 @@ const SNOOZE_MS = 5 * 60000;
 const DELIVERY_WINDOW_MS = 120000;
 const DAY_MS = 86400000;
 const WEEK_MS = 7 * DAY_MS;
-const DEFAULT_SOURCE_COLOR = '#5b5fc7';
+const DEFAULT_SOURCE_COLOR = '#8A8894'; // Neutral fallback for local calendar data.
 const VIEWS = ['timeGridDay', 'timeGridWorkWeek', 'timeGridWeek', 'dayGridMonth', 'listWeek', 'timeGridThreeDay', 'listDay'];
 const eventSourceKeys = p => p.sourceDetails.map(s => s.key).filter(Boolean);
 const eventAlertKey = (uid, title) => uid || 'fb:' + title;
@@ -51,10 +52,73 @@ function formatOffset(min) {
   return min + (min === 1 ? ' minute' : ' minutes') + ' before';
 }
 
+// ---- Daily agenda notification: one summary toast each day at a chosen time ----
+const DAILY_DEFAULT_TIME = '08:30';
+const DAILY_WINDOW_MS = 3 * 60 * 60000; // a server that starts later than this after the set time skips that day
+// Kept in the rules only when it differs from the default (off at 08:30), so saved rules and backups stay unchanged until used.
+function sanitizeDaily(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const time = typeof raw.time === 'string' && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(raw.time) ? raw.time : DAILY_DEFAULT_TIME;
+  const enabled = raw.enabled === true;
+  return enabled || time !== DAILY_DEFAULT_TIME ? { enabled, time } : null;
+}
+// Weekly summary: one toast a week, on a chosen weekday (0 = Sunday) at a chosen time. Kept only when used.
+const WEEKLY_DEFAULT_DAY = 1;
+function sanitizeWeekly(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const time = typeof raw.time === 'string' && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(raw.time) ? raw.time : DAILY_DEFAULT_TIME;
+  const day = Number.isInteger(raw.day) && raw.day >= 0 && raw.day <= 6 ? raw.day : WEEKLY_DEFAULT_DAY;
+  const enabled = raw.enabled === true;
+  return enabled || time !== DAILY_DEFAULT_TIME || day !== WEEKLY_DEFAULT_DAY ? { enabled, day, time } : null;
+}
+function localDayKey(ms) {
+  const d = new Date(ms);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+// The fired-memory key when today's summary is due and not yet sent, otherwise null.
+function dailyAgendaDue(rules, now, fired) {
+  const daily = rules.global.daily;
+  if (!daily || !daily.enabled) return null;
+  const [hour, minute] = daily.time.split(':').map(Number), date = new Date(now);
+  const at = new Date(date.getFullYear(), date.getMonth(), date.getDate(), hour, minute).getTime();
+  if (now < at || now >= at + DAILY_WINDOW_MS) return null;
+  const key = 'daily:' + localDayKey(now);
+  return fired[key] ? null : key;
+}
+// The fired-memory key when this week's summary is due and not yet sent, otherwise null.
+function weeklyAgendaDue(rules, now, fired) {
+  const weekly = rules.global.weekly;
+  if (!weekly || !weekly.enabled) return null;
+  const date = new Date(now);
+  if (date.getDay() !== weekly.day) return null;
+  const [hour, minute] = weekly.time.split(':').map(Number);
+  const at = new Date(date.getFullYear(), date.getMonth(), date.getDate(), hour, minute).getTime();
+  if (now < at || now >= at + DAILY_WINDOW_MS) return null;
+  const key = 'weekly:' + localDayKey(now);
+  return fired[key] ? null : key;
+}
+// Title and body for the toast. `occurrences` are from collectOccurrences, starting at `now`.
+function dailyAgendaText(occurrences, now) {
+  const end = new Date(now); end.setHours(24, 0, 0, 0);
+  const today = occurrences.filter(o => !isCancelledTitle(o.title) && o.start < +end);
+  const timed = today.filter(o => !o.allDay && o.start >= now).sort((a, b) => a.start - b.start);
+  const allDay = today.filter(o => o.allDay);
+  const total = timed.length + allDay.length;
+  const clock = ms => new Date(ms).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  const lines = [...allDay.slice(0, 1).map(o => 'All day: ' + o.title), ...timed.slice(0, 3).map(o => clock(o.start) + ' ' + o.title)];
+  const more = total - lines.length;
+  if (more > 0) lines.push('+' + more + ' more');
+  return { title: total ? 'Today: ' + total + (total === 1 ? ' event' : ' events') : 'Today: no events', body: lines.join('\n') || 'Your calendar is clear.' };
+}
+
 function sanitizeRules(raw) {
   const rules = { global: { muted: false }, calendars: {}, events: {} };
   if (!raw || typeof raw !== 'object') return rules;
   rules.global.muted = !!(raw.global && raw.global.muted);
+  const daily = sanitizeDaily(raw.global && raw.global.daily);
+  if (daily) rules.global.daily = daily;
+  const weekly = sanitizeWeekly(raw.global && raw.global.weekly);
+  if (weekly) rules.global.weekly = weekly;
   Object.entries(raw.calendars || {}).forEach(([key, c]) => {
     if (c && typeof c === 'object') rules.calendars[key] = { enabled: c.enabled !== false, offsets: normalizeOffsets(c.offsets) };
   });
@@ -87,6 +151,13 @@ const isAlertable = (rules, occ) => !isCancelledTitle(occ.title) && resolveOffse
 function normalizeFeedUrl(raw) {
   const href = String(raw || '').trim().replace(/^webcal:/i, 'https:');
   return /^https?:\/\//i.test(href) ? href : null;
+}
+
+// Two links that fetch the same calendar compare equal: scheme and host case, a #fragment and a trailing slash are ignored.
+function feedUrlKey(raw) {
+  const href = normalizeFeedUrl(raw);
+  if (!href) return null;
+  try { const u = new URL(href); u.hash = ''; return u.href.replace(/\/$/, ''); } catch { return null; }
 }
 
 function maxConfiguredOffset(rules) {
@@ -288,8 +359,8 @@ function upNext(sources, now, limit = 3) {
 if (typeof module !== 'undefined') {
   module.exports = {
     DAY_MS, WEEK_MS, expandSources, upNext, pruneFired, MAX_OFFSET_MIN, SNOOZE_MS, DELIVERY_WINDOW_MS, DEFAULT_SOURCE_COLOR, VIEWS, normalizeOffsets, formatOffset, sanitizeRules, resolveOffsets,
-    maxConfiguredOffset, isAlertable, normalizeFeedUrl, findDueAlerts, alertBody, parseIcs, deduplicateEvents,
+    maxConfiguredOffset, isAlertable, normalizeFeedUrl, feedUrlKey, findDueAlerts, alertBody, parseIcs, deduplicateEvents,
     findMeetingUrl, collectOccurrences, pickUpNext, occurrenceKey,
-    isCancelledTitle, visibleEvents, markConflicts, syncHealth
+    isCancelledTitle, visibleEvents, markConflicts, syncHealth, dailyAgendaDue, dailyAgendaText, weeklyAgendaDue, DAILY_DEFAULT_TIME
   };
 }

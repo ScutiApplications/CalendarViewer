@@ -1,8 +1,15 @@
+// @ts-check
 // Availability is computed from actual event intervals, never by the language model.
-const { addDays } = require('./assistant-dates');
+// Shared by the server (require) and the page (script tag, global CalendarFreeTime).
+(function (root, factory) {
+  const api = factory();
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  else root.CalendarFreeTime = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+const addDays = (date, days) => { const d = new Date(date); d.setDate(d.getDate() + days); return d; };
 function clock(value) {
   if (typeof value !== 'string' || !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value)) throw new Error('Working hours must use HH:MM.');
-  return value.split(':').map(Number);
+  return /** @type {[number, number]} */ (value.split(':').map(Number));
 }
 // One place validates working hours and measures them; overnight shifts wrap past midnight.
 function workingShift(hours = {}) {
@@ -38,4 +45,14 @@ function findFreeTime(events, [from, to], minutes, hours = {}, now = Date.now())
   }
   return slots;
 }
-module.exports = { findFreeTime, workingShift };
+/**
+ * Plain text to paste into an email or chat. Rows are { when, alt } where alt is the same time in a second zone, or ''.
+ * @param {number} minutes @param {string} zone @param {{ when: string, alt?: string }[]} rows
+ */
+function proposalText(minutes, zone, rows) {
+  if (!rows.length) return '';
+  const lines = rows.map(row => '- ' + row.when + (row.alt ? '  /  ' + row.alt : ''));
+  return ['I am free for ' + minutes + ' minutes at these times (' + (zone || 'my local time') + '):', ...lines].join('\n');
+}
+return { findFreeTime, workingShift, proposalText };
+});

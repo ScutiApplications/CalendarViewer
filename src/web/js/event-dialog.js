@@ -15,6 +15,9 @@ function showEventDialog(event) {
     const spansDays = lastDay && lastDay.toDateString() !== event.start.toDateString();
     document.getElementById('event-date').textContent = event.start.toLocaleDateString(undefined, dateOptions) + (spansDays ? ' – ' + lastDay.toLocaleDateString(undefined, dateOptions) : '');
     document.getElementById('event-time').textContent = event.allDay ? 'All day' : event.start.toLocaleTimeString(undefined, CLOCK) + (event.end ? ' – ' + event.end.toLocaleTimeString(undefined, CLOCK) + durationText(event.end - event.start) : '');
+    const altTime = document.getElementById('event-time-alt');
+    altTime.textContent = event.allDay ? '' : secondZoneText(event.start, event.end);
+    altTime.hidden = !altTime.textContent;
     const canceled = isCancelledTitle(event.title);
     const conflicts = document.getElementById('event-conflicts');
     conflicts.hidden = !p.conflicts?.length;
@@ -49,6 +52,7 @@ function showEventDialog(event) {
     copyLink.hidden = !meeting;
     copyLink.dataset.href = meeting ? meeting.href : '';
     copyLink.lastElementChild.textContent = 'Copy link';
+    showNote(event);
     document.getElementById('dlg').showModal();
     ddToggle.hidden = dd.scrollHeight <= dd.clientHeight + 1;
 }

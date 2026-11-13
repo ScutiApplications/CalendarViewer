@@ -1,3 +1,4 @@
+// @ts-check
 // Dependency-free model transport: the built-in llama.cpp model or a hosted provider. No request bodies or credentials are logged.
 const { PROVIDERS, adapters, errorStatus, errorDetail } = require('./providers');
 class ServiceError extends Error {
@@ -7,11 +8,11 @@ class ServiceUnreachable extends Error {
   // code: why the request failed (ECONNREFUSED, ENOTFOUND, timeout, ...), shown to the user so a setup problem can be diagnosed.
   constructor(message = 'Model service unreachable.', code = '') { super(message); this.code = code; }
 }
-function createModelClient({ provider: initialProvider = 'llamacpp', model: initialModel = '', url: initialUrl = '', token: initialToken = '', engine = null, fetch: fetchImpl = global.fetch, timeoutMs = 240000 } = {}) {
+function createModelClient({ provider: initialProvider = 'llamacpp', model: initialModel = '', url: initialUrl = '', token: initialToken = '', engine = null, fetch: fetchImpl = global.fetch, timeoutMs = 240000 } = /** @type {{ provider?: string, model?: string, url?: string, token?: string, engine?: any, fetch?: typeof fetch, timeoutMs?: number, fallback?: unknown }} */ ({})) {
   let url = initialUrl, token = initialToken, provider = initialProvider, model = initialModel;
   const counter = { n: 0 };
   // Only the explicitly selected provider may answer. Hosted failures never start local models.
-  async function adaptedChat(target, payload, { signal } = {}) {
+  async function adaptedChat(target, payload, { signal } = /** @type {{ signal?: AbortSignal }} */ ({})) {
     if (counter.n >= 3) throw new ServiceUnreachable('Assistant offline until the calendar server restarts.');
     signal?.throwIfAborted();
     const abort = new AbortController();

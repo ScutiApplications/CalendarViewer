@@ -18,11 +18,13 @@ function renderSources() {
   closeSourceMenu(false);
   box.replaceChildren();
   if (!sources.length) {
-    box.append(create('p', 'sb-empty', 'No calendars yet. Use + to add a link or an .ics file.'));
+    // role=list needs list items, so the empty message is the only item.
+    const empty = create('p', 'sb-empty', 'No calendars yet. Use + to add a link or an .ics file.');
+    empty.setAttribute('role', 'listitem');
+    box.append(empty);
     return;
   }
   sources.forEach(s => {
-    if (isReservedGreen(s.color)) s.color = PALETTE[(s.id - 1) % PALETTE.length];
     const el = create('div', 'src' + (s.enabled ? '' : ' off'));
     el.setAttribute('role', 'listitem');
     el.style.setProperty('--source-color', s.color);
@@ -71,6 +73,11 @@ function updateSourceHealth() {
     if (!source || !label) return;
     label.replaceChildren();
     if (!source.feedId) { label.textContent = 'Local file'; return; }
+    if (source.failed && source.error) {
+      const problem = create('span', 'source-error', source.error);
+      problem.setAttribute('role', 'alert');
+      label.append(problem);
+    }
     const page = syncHealth(source, now, staleAfter);
     const background = backgroundReachable ? backgroundFeedHealth.get(source.feedId) || { state: 'pending' } :
       { ...backgroundFeedHealth.get(source.feedId), state: 'offline' };
@@ -156,8 +163,20 @@ function openSourceMenu(s, row, button, colorInput) {
   };
   item('Rename', () => { closeSourceMenu(false); startRename(s, row); });
   item('Colour', () => {
-    closeSourceMenu(false);
-    if (colorInput.showPicker) colorInput.showPicker(); else colorInput.click();
+    sourceMenu.replaceChildren();
+    const names = ['Blue', 'Red', 'Amber', 'Violet', 'Teal', 'Pink'];
+    PALETTE.forEach((color, index) => {
+      const option = item(names[index], () => {
+        colorInput.value = color;
+        colorInput.dispatchEvent(new Event('input', { bubbles: true }));
+        closeSourceMenu(true);
+      }, 'source-palette-option');
+      option.setAttribute('role', 'menuitemradio');
+      option.setAttribute('aria-checked', String(s.color.toUpperCase() === color));
+      option.style.setProperty('--swatch', color);
+    });
+    sourceMenu.style.top = Math.max(8, Math.min(button.getBoundingClientRect().bottom + 4, innerHeight - sourceMenu.offsetHeight - 8)) + 'px';
+    sourceMenu.querySelector('button').focus();
   });
   const remove = item('Remove', () => {
     if (!remove.dataset.confirm) {
@@ -190,3 +209,4 @@ document.addEventListener('pointerdown', e => {
 });
 window.addEventListener('resize', () => closeSourceMenu(false));
 document.getElementById('sources').addEventListener('scroll', () => closeSourceMenu(false));
+document.querySelector('.sidebar-scroll').addEventListener('scroll', () => closeSourceMenu(false));

@@ -104,7 +104,7 @@ If you move the application folder, run `run.bat startup-on` again from the new 
 - Add an ICS link and a label in the sidebar, or drop/select `.ics` files.
 - Toggle calendars, edit their labels, change source colors, or remove them in the sidebar.
 - Use Today, the navigation arrows, and Day / Work week / Week / Month / Agenda to navigate. The selected view is remembered. Agenda is a compact weekly list with times, locations, source labels, alert indicators and overlap badges.
-- **Search events** filters titles and locations in the displayed date range, ignoring capitalization. Clear or press Escape to reset it; navigate dates to search another range. Search changes the display, while alert scheduling and overlap detection continue to consider all eligible events.
+- **Search events** filters titles, locations, descriptions and attendees in the displayed date range, ignoring capitalization. Clear or press Escape to reset it; navigate dates to search another range. **All dates** searches one year back and one year ahead, and **Filters** limits results to one calendar or to Teams meetings only. The search area starts collapsed to the search box and the date title; the Filters button opens the filter row and result count, and your choice is remembered. **Show** on a result switches to a week view containing it and outlines it for 15 seconds. Search changes the display, while alert scheduling and overlap detection continue to consider all eligible events.
 - Open an event for dates, location, description, and a Join button when a Teams meeting link is available.
 - Matching events from multiple sources are merged and display their source badges and dots.
 - Use **Hide cancelled events** in the sidebar to hide events whose titles start with Canceled or Cancelled. The choice is remembered. Events explicitly marked `STATUS:CANCELLED` in the feed are always excluded.
@@ -113,6 +113,13 @@ If you move the application folder, run `run.bat startup-on` again from the new 
 - Upcoming and ongoing events are green; finished events turn gray. Green is reserved for event status.
 - Refresh manually or select an auto-refresh interval (off, or every 1, 5, 10, 15, 30 or 60 minutes) in the sync strip under the calendar toolbar, which also shows the update status. The interval is remembered between visits.
 - **Working hours** in the sidebar shade the hours outside them, and weekends, in every view. A start later than the end (for example 22:00 to 06:00) is an overnight shift. The choice is remembered.
+- **Calendar tools** (sidebar, Find time and Review): **Find free time** lists the first free slots of a chosen length inside your working hours across all enabled calendars (optionally counting all-day events as busy); tick slots and choose *Copy selected as text*, which also shows your second time zone. **Next free slot**, **Focus time** (2 hours or more), **Overlaps** (next 7 days) and **Week summary** answer the same questions in one click. **Show** next to a result jumps to that week.
+- **Join now** appears for a Teams meeting that is running or starts within 10 minutes.
+- **Export view (.ics)** saves the displayed range as a file; **Print view** prints a fitted A4 layout with a date heading.
+- **Private notes:** open an event and add a note, shown in an amber dashed frame. Notes are never added to a calendar or sent anywhere: they live in this browser and in backups. One note can apply to every occurrence of a repeating event.
+- **Display settings** in the sidebar: first day of the week, 12 or 24 hour clock, a second time zone (shown in event details and the free-time finder) and a high-contrast mode.
+- **Keyboard shortcuts** (when no field or dialog is open): `t` today, `j` / `k` next or previous, `d` `w` `m` `a` day, week, month, agenda, `/` search, `f` find free time, `n` next free slot, `b` focus time, `o` overlaps, `s` week summary, `g` join now, `?` list shortcuts.
+- **Calendar links:** feed errors are explained in plain words (rejected, missing, rate-limited, failing, or a sign-in page instead of a calendar). A link that is already saved is refused and names the existing calendar; case, a `#fragment`, a trailing slash and `webcal:` are ignored.
 - Day view shows an **Up next** list of the next three upcoming events in the coming 7 days, with a Join button for the first when it has a Teams link.
 
 ## Alerts
@@ -131,6 +138,7 @@ Get an in-app toast and a system notification a set time before an event starts.
 - If the server cannot show Windows notifications, or is not reachable, the page falls back to browser notifications (needs browser permission) while it is open.
 - Windows Focus Assist / Do Not Disturb can hide Windows notifications.
 - The first notification registers an app name "ICS Calendar Viewer" for your Windows account (`HKCU\Software\Classes\AppUserModelId`).
+- **Daily agenda** (a Windows notification at a time you choose) and **Weekly summary** (on a chosen day and time) are set in the same place. The background server sends them, so the server must be running.
 - Alert settings are kept in browser local storage and copied to `data/alerts-state.json` (private, gitignored, excluded from ZIPs). `data/alerts-fired.json` remembers which alerts were sent.
 
 Cached events display while remote calendars refresh. Skeleton placeholders appear when the calendar is empty.
@@ -214,9 +222,21 @@ To use it from an MCP client, add an entry like this to the client's server conf
 }
 ```
 
-`/mcp` accepts any local caller. Requests with an `Origin` header (browsers) or a foreign `Host` are always refused. A custom `PORT` changes the URL.
+MCP access needs a bearer token. Open the sidebar settings, choose **Generate token** under MCP access and copy it when it is shown once; regenerating or revoking it invalidates the old one. Add it to the client as an `Authorization: Bearer <token>` header. Requests with an `Origin` header (browsers) or a foreign `Host` are always refused. A custom `PORT` changes the URL.
 
 ## Releasing
+
+Maintainers use `tools\release.bat [patch|minor|major] [--mandatory] [--skip-checks]` (needs `gh` signed in, pnpm, uv and Node):
+
+1. Add entries under `## Unreleased` in `CHANGELOG.md` (`### Added`, `### Changed`, `### Fixed`, `### Security`). Maintainer-only steps go under `### Maintainer`, which is never published.
+2. Run `tools\release.bat`. It raises `VERSION` and drafts the in-app release notes when Unreleased has entries, runs `pnpm run check`, builds the ZIP, tags, creates the GitHub release and publishes the signed manifest `latest.json` with `latest.json.sig` to the `gh-pages` branch. It asks before every push.
+3. Releases are always signed. The private key defaults to `%USERPROFILE%\Documents\calendarviewer-signing.pem` (or the file named by `CV_SIGNING_KEY`) and must stay outside the repository. Create it once with `node tools/sign-manifest.js keygen <file>`, set `SIGNING_PUBLIC_KEY` in `src/server/update-manifest.js` and ship that in a release. See [update integrity](docs/update-integrity.md).
+4. **Mandatory updates:** `tools\release-mandatory.bat` (or `--mandatory`) sets `minimumVersion` in the signed manifest, and a `### Security` heading or a line starting with `Mandatory` does the same. An install below it shows an *Update required* dialog that cannot be closed until the update is installed, and later optional releases keep the requirement.
+5. Release notes must not name files that are not in the ZIP (`tools`, `test`, `e2e`, `docs`, `.github`, `.githooks`); the release stops if they do.
+
+`pnpm run check` runs the unit tests, ESLint, `tsc` and Playwright end-to-end tests on the installed Edge. Run `git config core.hooksPath .githooks` once so pushes run it.
+
+The GitHub Actions workflow below remains available:
 
 1. Put the next stable number (`X.Y.Z`) in `VERSION`, commit the changes and push to `main`.
 2. The **release** GitHub Actions workflow runs the tests on Windows and Linux, builds `CalendarViewer-X.Y.Z.zip`, creates tag `vX.Y.Z` and uploads a draft release with generated notes.
@@ -247,6 +267,7 @@ Recipients should extract the ZIP before running the launchers and add their own
 - **Port already in use:** stop the previous calendar server or the other application using port 3000.
 - **Feed refresh fails:** confirm the server is running and the ICS link is accessible. Cached events remain available.
 - **Startup does not work:** check that the application folder has not moved and turn startup off and on again with `run.bat startup-off` and `run.bat startup-on`.
+- **An MCP client cannot connect (401):** generate a token in the sidebar settings and send it as a bearer token.
 - **An MCP client cannot connect (403):** the URL must use `127.0.0.1:3000` or `localhost:3000` (your port if changed), and the request must carry no `Origin` header. Start this server before the client.
 - **MCP tools miss an imported file:** open the calendar page once so it syncs imported files to the server.
 - **Custom port:** set the `PORT` environment variable before launching. Browser storage is separate for each port.
@@ -261,7 +282,7 @@ Recipients should extract the ZIP before running the launchers and add their own
 ## Disclaimer
 
 Alerts are best effort and must not be used for safety-critical purposes.
-This project is not affiliated with Microsoft, Google or DXC. "Teams-inspired" describes the layout only.
+This project is not affiliated with Microsoft or Google. "Teams-inspired" describes the layout only.
 
 ## Licences and security
 
