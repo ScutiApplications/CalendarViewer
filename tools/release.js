@@ -1,8 +1,10 @@
 // @ts-check
-// Maintainer-only release helper for use while GitHub Actions is unavailable. Run it through tools\release.bat.
+// Maintainer-only release helper. Run it through tools\release.bat.
 // It prepares the version (bump-version: raises VERSION, moves the Unreleased changelog entries, drafts the in-app
-// notes, commits and pushes), checks the repository, builds the ZIP, tags, creates the GitHub release, then publishes
-// latest.json and its signature latest.json.sig to gh-pages. It asks before every push or upload.
+// notes, commits and pushes), checks the repository, then waits for the GitHub Actions "release" workflow (started by
+// the VERSION push) to build the ZIP, tag and publish the release. It replaces the generated release notes with the
+// changelog, then signs and publishes latest.json and latest.json.sig to gh-pages. The signing key stays on this PC.
+// It asks before every push or upload.
 //   node tools/release.js [patch|minor|major] --key <private-key-file> [--skip-checks] [--mandatory]
 // The bump runs when CHANGELOG.md has entries under "## Unreleased" (default patch). When Unreleased is empty, the
 // version already in VERSION is released, for example after an earlier bump.
@@ -12,7 +14,6 @@
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const crypto = require('node:crypto');
 const readline = require('node:readline/promises');
 const { spawnSync } = require('node:child_process');
 const { bumpVersion } = require('./bump-version');
@@ -91,9 +92,6 @@ async function confirm(rl, question) {
   if (answer !== 'y' && answer !== 'yes') throw new Error('Stopped. Nothing further was changed.');
 }
 
-/** @param {string} file */
-function sha256(file) { return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex'); }
-
 /**
  * The bump kind in the command line: the first word that is not an option or the value of --key.
  * @param {string[]} argv
@@ -126,13 +124,12 @@ async function main() {
   const version = fs.readFileSync(path.join(ROOT, 'VERSION'), 'utf8').trim();
   if (!SEMVER.test(version)) throw new Error('VERSION must be X.Y.Z.');
   const tag = 'v' + version;
-  const zip = path.join(ROOT, 'dist', `CalendarViewer-${version}.zip`);
-  const sums = path.join(ROOT, 'dist', 'SHA256SUMS');
+  const zipName = `CalendarViewer-${version}.zip`;
   const repoFlag = `${HOST}/${REPO}`;
 
   console.log(`Releasing ${tag}`);
   run('git', ['fetch', '--quiet', 'origin'], { quiet: true });
-  if (run('git', ['rev-parse', 'HEAD'], { quiet: true }) !== run('git', ['rev-parse', 'origin/main'], { quiet: true })) throw new Error('main and origin/main differ. Push (or pull) first so the tag matches what is published.');
+  if (run('git', ['rev-parse', 'HEAD'], { quiet: true }) !== run('git', ['rev-parse', 'origin/main'], { quiet: true })) throw new Error('main and origin/main differ. Push (or pull) first so the workflow builds what you checked.');
   const notes = changelogSection(fs.readFileSync(path.join(ROOT, 'CHANGELOG.md'), 'utf8'), version);
   if (!notes) throw new Error(`CHANGELOG.md has no "## ${version}" section.`);
   const userNotes = notes.split(/^### Maintainer\s*$/m)[0];
@@ -145,35 +142,34 @@ async function main() {
   if (fs.readFileSync(path.join(ROOT, 'src', 'shared', 'release-notes.js'), 'utf8').includes('TODO:')) throw new Error('src/shared/release-notes.js still has a TODO draft. Write the notes first.');
   if (!fs.existsSync(keyFile)) throw new Error('Signing key file not found: ' + keyFile);
   gh(['auth', 'status', '--hostname', HOST]);
-  let exists = true;
-  try { gh(['release', 'view', tag, '--repo', repoFlag]); } catch { exists = false; }
-  if (exists) throw new Error(`Release ${tag} already exists. Increase VERSION for a new release.`);
+  try {
+    const existing = JSON.parse(gh(['release', 'view', tag, '--repo', repoFlag, '--json', 'isDraft']));
+    if (!existing.isDraft) throw new Error(`Release ${tag} is already published. Increase VERSION for a new release.`);
+  } catch (error) { if (/already published/.test(String(error.message))) throw error; /* no release yet */ }
 
   if (!skipChecks) { console.log('Running checks...'); run('pnpm', ['run', 'check'], { shell: true }); }
-
-  console.log('Building the ZIP...');
-  run('uv', ['run', 'tools/make_zip.py']);
-  const localHash = sha256(zip);
-  console.log(`${path.basename(zip)}  ${fs.statSync(zip).size} bytes  sha256 ${localHash}`);
 
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   /** @type {string | undefined} */
   let worktree;
   try {
-    await confirm(rl, `Push tag ${tag} and create the GitHub release (public to everyone with repository access)?`);
-    const tagExists = run('git', ['tag', '--list', tag], { quiet: true }) === tag;
-    if (!tagExists) run('git', ['tag', '-a', tag, '-m', 'CalendarViewer ' + version], { quiet: true });
-    run('git', ['push', 'origin', tag], { quiet: true });
+    console.log(`GitHub Actions builds ${zipName} and publishes ${tag} after the VERSION push. Waiting for the release...`);
+    /** @type {any} */
+    let release;
+    for (let attempt = 0; attempt < 90 && !release; attempt++) {
+      try {
+        const found = JSON.parse(gh(['api', `repos/${REPO}/releases/tags/${tag}`, '--hostname', HOST]));
+        if (!found.draft && (found.assets || []).some((/** @type {{name: string, digest?: string}} */ item) => item.name === zipName && item.digest)) release = found;
+      } catch { /* not published yet */ }
+      if (!release) await new Promise(resolve => setTimeout(resolve, 10000));
+    }
+    if (!release) throw new Error(`Release ${tag} was not published within 15 minutes. Check Actions > release on GitHub, then run tools\release.bat again (it continues with the version in VERSION).`);
+    console.log(`Release published by Actions: https://${HOST}/${REPO}/releases/tag/${tag}`);
     const notesFile = path.join(os.tmpdir(), `calendarviewer-notes-${process.pid}.md`);
     fs.writeFileSync(notesFile, userNotes);
-    gh(['release', 'create', tag, zip, sums, '--repo', repoFlag, '--verify-tag', '--title', tag, '--notes-file', notesFile, '--latest']);
+    gh(['release', 'edit', tag, '--repo', repoFlag, '--notes-file', notesFile]);
     fs.rmSync(notesFile, { force: true });
-    console.log(`Release created: https://${HOST}/${REPO}/releases/tag/${tag}`);
-
-    const release = JSON.parse(gh(['api', `repos/${REPO}/releases/tags/${tag}`, '--hostname', HOST]));
-    const asset = (release.assets || []).find((/** @type {{name: string}} */ item) => item.name === path.basename(zip));
-    if (!asset || asset.digest !== 'sha256:' + localHash) throw new Error('The uploaded ZIP does not match the local build. Do not publish latest.json; investigate the release.');
-    console.log('Uploaded ZIP matches the local build.');
+    console.log('Release notes replaced with the changelog entries.');
 
     const { createReleaseSite } = require('./make_release_site');
     worktree = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'calendarviewer-pages-')), 'pages');
