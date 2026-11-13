@@ -142,10 +142,6 @@ async function main() {
   if (fs.readFileSync(path.join(ROOT, 'src', 'shared', 'release-notes.js'), 'utf8').includes('TODO:')) throw new Error('src/shared/release-notes.js still has a TODO draft. Write the notes first.');
   if (!fs.existsSync(keyFile)) throw new Error('Signing key file not found: ' + keyFile);
   gh(['auth', 'status', '--hostname', HOST]);
-  try {
-    const existing = JSON.parse(gh(['release', 'view', tag, '--repo', repoFlag, '--json', 'isDraft']));
-    if (!existing.isDraft) throw new Error(`Release ${tag} is already published. Increase VERSION for a new release.`);
-  } catch (error) { if (/already published/.test(String(error.message))) throw error; /* no release yet */ }
 
   if (!skipChecks) { console.log('Running checks...'); run('pnpm', ['run', 'check'], { shell: true }); }
 
@@ -163,7 +159,7 @@ async function main() {
       } catch { /* not published yet */ }
       if (!release) await new Promise(resolve => setTimeout(resolve, 10000));
     }
-    if (!release) throw new Error(`Release ${tag} was not published within 15 minutes. Check Actions > release on GitHub, then run tools\release.bat again (it continues with the version in VERSION).`);
+    if (!release) throw new Error(`Release ${tag} was not published within 15 minutes. Check Actions > release on GitHub, then run tools\\release.bat again (it continues with the version in VERSION).`);
     console.log(`Release published by Actions: https://${HOST}/${REPO}/releases/tag/${tag}`);
     const notesFile = path.join(os.tmpdir(), `calendarviewer-notes-${process.pid}.md`);
     fs.writeFileSync(notesFile, userNotes);
@@ -175,6 +171,9 @@ async function main() {
     worktree = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'calendarviewer-pages-')), 'pages');
     run('git', ['worktree', 'add', '--quiet', '--detach', worktree, 'origin/gh-pages'], { quiet: true });
     const manifestFile = path.join(worktree, 'latest.json');
+    // A re-run after an interrupted release resumes here; stop only when this version is already in the manifest.
+    try { if (JSON.parse(fs.readFileSync(manifestFile, 'utf8')).version === version) throw new Error(`The manifest on gh-pages already lists ${version}. Increase VERSION for a new release.`); }
+    catch (error) { if (/already lists/.test(String(error.message))) throw error; /* no manifest yet */ }
     const minimumVersion = nextMinimumVersion(fs.existsSync(manifestFile) ? fs.readFileSync(manifestFile, 'utf8') : '', version, mandatory);
     const site = createReleaseSite(release, '', { minimumVersion });
     fs.writeFileSync(manifestFile, JSON.stringify(site.manifest, null, 2) + '\n');
