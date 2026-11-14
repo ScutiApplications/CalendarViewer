@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+
+- Internal cleanup of free-time search and summary notifications. How the app looks and works is unchanged.
+
 ## 1.1.0
 
 ### Added
