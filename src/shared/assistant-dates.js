@@ -1,7 +1,7 @@
 // @ts-check
 // Deterministic calendar dates in the server's local timezone; range ends are exclusive.
 const WEEKDAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-const addDays = (date, days) => { const d = new Date(date); d.setDate(d.getDate() + days); return d; };
+const { addDays } = require('./free-time');
 function resolveDate(value, now = Date.now()) {
   if (typeof value !== 'string') throw new Error('Date must be a string.');
   const word = value.trim().toLowerCase();

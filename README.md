@@ -17,19 +17,24 @@ Click the date button to open the date picker. Scroll or drag its month, day, an
 ```text
 run.bat             one-click: start the server if needed, restart it after an update, open the calendar; or: run.bat restart|stop|startup-on|startup-off
 VERSION             application version, reported by the server at /api/version
-scripts/            calendar.ps1 (start, restart, stop, startup, toast)
-tools/              make_zip.bat and make_zip.py: ZIP for a GitHub release
+scripts/            calendar.ps1 (start, restart, stop, startup, toast), credential-protection.ps1 (Windows DPAPI for saved API keys)
+tools/              release.bat, release.js, release-mandatory.bat, bump-version.js, sign-manifest.js and make_release_site.js (releases and update manifest);
+                    make_zip.bat and make_zip.py (ZIP for a GitHub release); check.bat (all local checks); install-local.bat
 src/server/         server.js (routes and startup), http.js, static-files.js, feed-fetch.js, alerts.js (background alerts),
-                    reminders.js (snoozes), backups.js, mcp.js (MCP adapter), calendar-tools.js (shared read-only tools),
+                    reminders.js (snoozes), backups.js, calendar-tools.js (shared read-only tools), mcp.js and mcp-token-store.js (MCP endpoint),
                     assistant.js (tool loop), model-client.js (built-in and hosted transport), providers.js, llama-engine.js,
-                    assistant-config.js, assistant-route.js, laya-engine.js, builtin-models.js, tool-router.js,
-                    json-store.js (atomic JSON files), startup.js, powershell.js,
-                    updates.js (GitHub releases), update-install.js (download/staging), update-worker.js (installation/rollback)
-src/shared/         alert-logic.js, backup.js and search.js (page and server), storage.js and calendar-layout.js (page only),
-                    assistant-dates.js and free-time.js (server calculations)
-src/web/            index.html, css/ (styles, responsive, assistant), js/ (one script per feature including assistant-ui.js, main.js last)
+                    assistant-config.js, assistant-settings-store.js, assistant-route.js, laya-engine.js, llama-hardware.js, builtin-models.js,
+                    model-download.js, archive.js (ZIP reader), tool-router.js, credential-protection.js, json-store.js (atomic JSON files),
+                    startup.js, powershell.js, version-state.js,
+                    updates.js (GitHub releases), update-manifest.js, update-signature.js, update-download.js (download), update-install.js (staging),
+                    update-worker.js (installation/rollback)
+src/shared/         alert-logic.js, backup.js, search.js, free-time.js, insights.js, ics-export.js, privacy-consent.js and release-notes.js (page and server),
+                    storage.js and calendar-layout.js (page only), assistant-dates.js (server calculations)
+src/web/            index.html, privacy.html, terms.html, cookies.html, css/ (styles, theme, workspace, responsive, tools, assistant, privacy),
+                    js/ (one script per feature including assistant-ui.js, main.js last)
 vendor/             FullCalendar, ical.js and third-party licences
-test/               run with: node --test
+test/, e2e/         unit tests (node --test) and Playwright end-to-end tests (pnpm run e2e)
+docs/               update-integrity.md (update trust model)
 data/               your feeds and alert state, MiniCPM under data/llama/ and Laya under data/laya/ (private)
 ```
 
@@ -234,7 +239,7 @@ Maintainers use `tools\release.bat [patch|minor|major] [--mandatory] [--skip-che
 4. **Mandatory updates:** `tools\release-mandatory.bat` (or `--mandatory`) sets `minimumVersion` in the signed manifest, and a `### Security` heading or a line starting with `Mandatory` does the same. An install below it shows an *Update required* dialog that cannot be closed until the update is installed, and later optional releases keep the requirement.
 5. Release notes must not name files that are not in the ZIP (`tools`, `test`, `e2e`, `docs`, `.github`, `.githooks`); the release stops if they do.
 
-`pnpm run check` runs the unit tests, ESLint, `tsc` and Playwright end-to-end tests on the installed Edge. Run `git config core.hooksPath .githooks` once so pushes run it.
+`pnpm run check` runs the unit tests, ESLint, `tsc` and Playwright end-to-end tests on the installed Edge.
 
 The release workflow does the building and publishing, and can also be retried on its own:
 

@@ -19,23 +19,28 @@ function workingShift(hours = {}) {
   const minutes = ((end[0] * 60 + end[1]) - (start[0] * 60 + start[1]) + 1440) % 1440;
   return { start, end, minutes, overnight: end[0] * 60 + end[1] < start[0] * 60 + start[1] };
 }
-function findFreeTime(events, [from, to], minutes, hours = {}, now = Date.now()) {
-  if (!Number.isInteger(minutes) || minutes < 1 || minutes > 1440) throw new Error('minutes must be an integer from 1 to 1440.');
-  if (!(to > from) || to - from > 93 * 86400000) throw new Error('Invalid availability range.');
+/**
+ * Whole gaps inside working hours on weekdays, soonest first. `build(start, end)` makes each result from epoch ms.
+ * @template T
+ * @param {{ start: Date, end: Date }[]} events @param {[Date, Date]} range @param {number} duration milliseconds
+ * @param {{ start?: string, end?: string }} hours @param {number} now @param {number} limit @param {(start: number, end: number) => T} build
+ * @returns {T[]}
+ */
+function freeGaps(events, [from, to], duration, hours, now, limit, build) {
+  if (!(to > from) || +to - +from > 93 * 86400000) throw new Error('Invalid availability range.');
   const { start, end } = workingShift(hours);
   const busy = events.filter(e => e.end > e.start).map(e => [+e.start, +e.end]).sort((a, b) => a[0] - b[0]);
-  const slots = [], duration = minutes * 60000;
+  const gaps = [];
   const first = new Date(from); first.setHours(0, 0, 0, 0);
   // Include the preceding shift when a requested range begins during overnight working hours.
-  for (let day = addDays(first, -1); day < to && slots.length < 20; day = addDays(day, 1)) {
+  for (let day = addDays(first, -1); day < to && gaps.length < limit; day = addDays(day, 1)) {
     if (day.getDay() === 0 || day.getDay() === 6) continue;
     const a = new Date(day), b = new Date(day);
     a.setHours(...start, 0, 0); b.setHours(...end, 0, 0);
     if (b <= a) b.setDate(b.getDate() + 1);
-    let cursor = Math.max(+a, +from, +now), finish = Math.min(+b, +to);
-    const record = until => {
-      if (until - cursor >= duration && slots.length < 20) slots.push({ start: new Date(cursor).toISOString(), end: new Date(cursor + duration).toISOString() });
-    };
+    let cursor = Math.max(+a, +from, +now);
+    const finish = Math.min(+b, +to);
+    const record = until => { if (until - cursor >= duration && gaps.length < limit) gaps.push(build(cursor, until)); };
     for (const [s, e] of busy) {
       if (e <= cursor || s >= finish) continue;
       record(Math.min(s, finish)); cursor = Math.max(cursor, e);
@@ -43,7 +48,12 @@ function findFreeTime(events, [from, to], minutes, hours = {}, now = Date.now())
     }
     record(finish);
   }
-  return slots;
+  return gaps;
+}
+function findFreeTime(events, range, minutes, hours = {}, now = Date.now()) {
+  if (!Number.isInteger(minutes) || minutes < 1 || minutes > 1440) throw new Error('minutes must be an integer from 1 to 1440.');
+  const duration = minutes * 60000;
+  return freeGaps(events, range, duration, hours, now, 20, start => ({ start: new Date(start).toISOString(), end: new Date(start + duration).toISOString() }));
 }
 /**
  * Plain text to paste into an email or chat. Rows are { when, alt } where alt is the same time in a second zone, or ''.
@@ -54,5 +64,5 @@ function proposalText(minutes, zone, rows) {
   const lines = rows.map(row => '- ' + row.when + (row.alt ? '  /  ' + row.alt : ''));
   return ['I am free for ' + minutes + ' minutes at these times (' + (zone || 'my local time') + '):', ...lines].join('\n');
 }
-return { findFreeTime, workingShift, proposalText };
+return { findFreeTime, freeGaps, workingShift, proposalText, addDays };
 });

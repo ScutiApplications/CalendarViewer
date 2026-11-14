@@ -22,5 +22,4 @@
 
 ### Maintainer
 
-- Run `node tools/sign-manifest.js keygen <file>`, store the private key outside the repository, and set `SIGNING_PUBLIC_KEY` in `src/server/update-manifest.js` before the first signed release.
-- `tools\release.bat` replaces the manual version bump; `pnpm run check` is the local quality gate and `.githooks/pre-push` runs it.
+- `tools\release.bat` replaces the manual version bump; `pnpm run check` is the local quality gate.

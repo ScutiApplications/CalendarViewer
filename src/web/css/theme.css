@@ -11,7 +11,7 @@
   --status-live: #107C41; /* Exception: only upcoming/live event status. */
   --now-line: var(--danger); --shadow-ink: 24 24 27;
   --header-bg: var(--midnight); --header-focus: var(--true-blue);
-  --header-border: #3C3C3C; --header-divider: rgb(246 243 240 / .28);
+  --header-border: #3C3C3C;
   --warning-tint: color-mix(in srgb, var(--gold) 14%, var(--panel));
   --chat-user-bg: var(--midnight); --chat-user-border: var(--midnight);
   --up-next-bg: var(--midnight); --up-next-action: var(--true-blue);
@@ -63,7 +63,6 @@ a:focus-visible, summary:focus-visible, .policy-page a:focus-visible,
 .compact-brand { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .compact-brand img { display: block; flex: none; width: auto; height: 40px; max-width: none; object-fit: contain; }
 .compact-brand > span { display: block; width: auto; height: auto; border-radius: 0; background: transparent; color: var(--canvas); }
-.compact-brand .brand-divider { flex: none; width: 1px; height: 22px; background: var(--header-divider); }
 .compact-brand .brand-title { font-size: 15px; font-weight: 600; line-height: 1.2; }
 .menu-toggle { display: none; }
 .compact-header .menu-toggle { flex: none; color: var(--canvas); background: transparent; border-color: var(--header-border); }
@@ -105,7 +104,7 @@ a:focus-visible, summary:focus-visible, .policy-page a:focus-visible,
 .sync-strip[data-state=error] .sync-refresh, .sync-strip[data-state=stale] .sync-refresh { color: var(--warning); }
 /* Red text requires a White backing in light mode, including sidebar errors on Canvas. */
 .source-sync[data-state=error], .startup-state.error, .src-menu button.danger,
-#backup-error, .chat-check.bad, .msg.bot.error .bubble, .assistant-error {
+#backup-error, .chat-check.bad, .msg.bot.error .bubble {
   background: var(--panel); color: var(--danger);
 }
 .dlg-bar, .dlg-bar[data-state=done] { background: var(--detail-color, var(--accent)); }

@@ -1,6 +1,6 @@
 @echo off
 rem Run every local check: unit tests, ESLint, type check and Playwright end-to-end tests (uses the installed Edge).
-rem Use it while GitHub Actions is unavailable. Add "hook" to also turn on the pre-push hook: tools\check.bat hook
+rem Use it while GitHub Actions is unavailable.
 setlocal
 for %%I in ("%~dp0..") do set "ROOT=%%~fI"
 cd /d "%ROOT%" || exit /b 1
@@ -10,11 +10,6 @@ where pnpm >nul 2>nul || (
   echo Then open a new terminal and run this file again.
   pause
   exit /b 1
-)
-
-if /i "%~1"=="hook" (
-  git config core.hooksPath .githooks || (echo Could not enable the pre-push hook. & pause & exit /b 1)
-  echo Pre-push hook enabled. Skip it for one push with: git push --no-verify
 )
 
 if not exist node_modules (

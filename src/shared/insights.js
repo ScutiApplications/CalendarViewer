@@ -7,8 +7,6 @@
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.CalendarInsights = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this, function (FreeTime) {
-const ONE_DAY = 86400000;
-const plusDays = (date, days) => { const d = new Date(date); d.setDate(d.getDate() + days); return d; };
 const cancelled = title => /^\s*cancell?ed\b/i.test(String(title));
 /** Timed events that take up time: not all-day, not cancelled, with a real end. */
 const busyEvents = events => events.filter(e => !e.allDay && !cancelled(e.title) && e.start && e.end && e.end > e.start);
@@ -18,28 +16,8 @@ const busyEvents = events => events.filter(e => !e.allDay && !cancelled(e.title)
  * @param {any[]} events @param {[Date, Date]} range @param {number} minMinutes
  * @param {{ start?: string, end?: string }} hours @param {number} now @param {number} [limit]
  */
-function freeBlocks(events, [from, to], minMinutes, hours, now, limit = 50) {
-  if (!(to > from) || +to - +from > 93 * ONE_DAY) throw new Error('Invalid availability range.');
-  const { start, end } = FreeTime.workingShift(hours);
-  const busy = events.filter(e => e.end > e.start).map(e => [+e.start, +e.end]).sort((a, b) => a[0] - b[0]);
-  const blocks = [], need = minMinutes * 60000;
-  const first = new Date(from); first.setHours(0, 0, 0, 0);
-  for (let day = plusDays(first, -1); day < to && blocks.length < limit; day = plusDays(day, 1)) {
-    if (day.getDay() === 0 || day.getDay() === 6) continue;
-    const a = new Date(day), b = new Date(day);
-    a.setHours(start[0], start[1], 0, 0); b.setHours(end[0], end[1], 0, 0);
-    if (b <= a) b.setDate(b.getDate() + 1);
-    let cursor = Math.max(+a, +from, +now);
-    const finish = Math.min(+b, +to);
-    const record = until => { if (until - cursor >= need && blocks.length < limit) blocks.push({ start: new Date(cursor), end: new Date(until) }); };
-    for (const [s, e] of busy) {
-      if (e <= cursor || s >= finish) continue;
-      record(Math.min(s, finish)); cursor = Math.max(cursor, e);
-      if (cursor >= finish) break;
-    }
-    if (cursor < finish) record(finish);
-  }
-  return blocks;
+function freeBlocks(events, range, minMinutes, hours, now, limit = 50) {
+  return FreeTime.freeGaps(events, range, minMinutes * 60000, hours, now, limit, (start, end) => ({ start: new Date(start), end: new Date(end) }));
 }
 
 /** Pairs of timed events that overlap, soonest first. Each pair has the overlapping window. */
@@ -75,8 +53,8 @@ function weekSummary(events, [from, to], hours, now) {
   const inside = events.filter(e => e.start && e.start < to && (e.end || e.start) > from);
   const timed = busyEvents(inside);
   const days = [];
-  for (let day = new Date(from); day < to; day = plusDays(day, 1)) {
-    const next = plusDays(day, 1);
+  for (let day = new Date(from); day < to; day = FreeTime.addDays(day, 1)) {
+    const next = FreeTime.addDays(day, 1);
     const clipped = timed.filter(e => e.start < next && e.end > day).map(e => ({ ...e, start: new Date(Math.max(+e.start, +day)), end: new Date(Math.min(+e.end, +next)) }));
     days.push({ date: new Date(day), meetings: clipped.length, minutes: busyMinutes(clipped) });
   }

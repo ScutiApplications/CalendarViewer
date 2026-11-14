@@ -50,7 +50,6 @@ button:disabled { cursor: default; }
 .compact-brand { gap: 20px; }
 .compact-brand img { width: 92px; height: 34px; }
 .compact-brand .brand-title { font-size: 16px; font-weight: 550; letter-spacing: -.2px; }
-.compact-brand .brand-divider { height: 25px; }
 .header-context { display: flex; align-items: center; gap: 18px; margin-left: auto; }
 .header-readonly { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; border: 1px solid var(--workspace-rail-border); border-radius: 5px; font-size: 11px; color: var(--white); }
 #theme-toggle { min-height: 30px; padding: 4px 9px; background: transparent; border-color: var(--workspace-rail-border); color: var(--white); font-size: 11px; }
@@ -299,7 +298,6 @@ dialog h2 { font-size: 24px; letter-spacing: -.6px; font-weight: 600; }
   .compact-brand { gap: 10px; }
   .compact-brand img { width: 63px; height: 28px; }
   .compact-brand .brand-title { font-size: 13px; }
-  .compact-brand .brand-divider { height: 22px; }
   .compact-date-field button { min-height: 38px; padding: 0; border: 0; background: transparent; font-size: 22px; font-weight: 600; }
   #compact-title { margin-top: 0; }
   #compact-weekday { font-size: 10px; letter-spacing: 1.1px; text-transform: uppercase; }

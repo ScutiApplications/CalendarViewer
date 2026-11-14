@@ -120,6 +120,14 @@ function createAlertService({ readFeeds, fetchText, notify = windowsToast, state
     }
   }
 
+  // Records a due daily or weekly summary as fired, then shows it as a toast.
+  function sendSummary(key, t, text) {
+    fired[key] = t;
+    try { writeJsonAtomic(firedFile, fired); }
+    catch (e) { log('Could not save ' + path.basename(firedFile) + ': ' + e.message); }
+    notify({ title: text.title, join: undefined, snoozeUrl: undefined, key: key }, text.body, err => { toastError = err; if (err) log('Windows toast failed: ' + err); });
+  }
+
   // Sends the once-a-day agenda summary when it is due. Uses cached feed data only, like check().
   function checkDaily() {
     const t = now();
@@ -130,10 +138,7 @@ function createAlertService({ readFeeds, fetchText, notify = windowsToast, state
       const toMidnight = new Date(t).setHours(24, 0, 0, 0) - t;
       text = logic.dailyAgendaText(logic.collectOccurrences(currentSources(readFeeds()), t, toMidnight), t);
     } catch (e) { log('Daily agenda failed: ' + e.message); return; }
-    fired[key] = t;
-    try { writeJsonAtomic(firedFile, fired); }
-    catch (e) { log('Could not save ' + path.basename(firedFile) + ': ' + e.message); }
-    notify({ title: text.title, join: undefined, snoozeUrl: undefined, key: key }, text.body, err => { toastError = err; if (err) log('Windows toast failed: ' + err); });
+    sendSummary(key, t, text);
   }
 
   // Sends the once-a-week summary of the next seven days when it is due. Cached feed data only, like checkDaily().
@@ -148,10 +153,7 @@ function createAlertService({ readFeeds, fetchText, notify = windowsToast, state
       const events = logic.visibleEvents(logic.expandSources(currentSources(readFeeds()), from, to), true);
       text = insights.weekNotification(insights.weekSummary(events, [from, to], undefined, t));
     } catch (e) { log('Weekly summary failed: ' + e.message); return; }
-    fired[key] = t;
-    try { writeJsonAtomic(firedFile, fired); }
-    catch (e) { log('Could not save ' + path.basename(firedFile) + ': ' + e.message); }
-    notify({ title: text.title, join: undefined, snoozeUrl: undefined, key: key }, text.body, err => { toastError = err; if (err) log('Windows toast failed: ' + err); });
+    sendSummary(key, t, text);
   }
 
   function tick() {
