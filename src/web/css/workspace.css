@@ -45,15 +45,8 @@ button, input, select, .primary { border-radius: var(--workspace-radius); }
 button, a, summary { -webkit-tap-highlight-color: transparent; }
 :focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
 button:disabled { cursor: default; }
-.app { grid-template-rows: 64px minmax(0, 1fr); }
-.compact-header { height: 64px; padding: 0 24px; background: var(--midnight); border-bottom: 1px solid var(--header-border); }
-.compact-brand { gap: 20px; }
-.compact-brand img { width: 92px; height: 34px; }
-.compact-brand .brand-title { font-size: 16px; font-weight: 550; letter-spacing: -.2px; }
-.header-context { display: flex; align-items: center; gap: 18px; margin-left: auto; }
-.header-readonly { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; border: 1px solid var(--workspace-rail-border); border-radius: 5px; font-size: 11px; color: var(--white); }
-#theme-toggle { min-height: 30px; padding: 4px 9px; background: transparent; border-color: var(--workspace-rail-border); color: var(--white); font-size: 11px; }
-#theme-toggle:hover { background: var(--workspace-rail-border); }
+.app { grid-template-rows: minmax(0, 1fr); }
+.compact-header { display: none; height: 64px; padding: 0 24px; background: var(--midnight); border-bottom: 1px solid var(--header-border); }
 .compact-header :focus-visible { outline-color: var(--sky); }
 .compact-header .menu-toggle:hover { background: var(--workspace-rail-border); }
 
@@ -99,7 +92,9 @@ summary::-webkit-details-marker { display: none; }
 .alerts-panel > .backup-settings p { margin: 12px 7px; font-size: 11px; line-height: 1.6; }
 .alerts-panel > .backup-settings a { font-size: 11px; }
 .alerts-panel > #assistant-settings-open { display: block; width: 100%; min-height: 38px; padding: 8px 7px; margin: 0 0 5px; background: transparent; border: 0; font-size: 11px; color: var(--muted); }
-.sidebar-foot { display: flex; align-items: center; gap: 7px; flex: none; padding: 13px 7px 0; border-top: 1px solid var(--border); color: var(--muted); font-size: 10px; }
+.sidebar-foot { display: flex; align-items: center; gap: 7px; flex: none; padding: 10px 7px 0; border-top: 1px solid var(--border); color: var(--muted); font-size: 10px; }
+.sidebar-foot #theme-toggle { margin-left: auto; min-height: 30px; padding: 4px 9px; background: transparent; border: 1px solid var(--border); color: var(--text); font-size: 11px; white-space: nowrap; }
+.sidebar-foot #theme-toggle:hover { background: var(--border); }
 .policy-links { margin: 12px 5px 0; }
 
 /* Search, view toolbar, and sync share the calendar's clean white surface. */
@@ -264,11 +259,7 @@ dialog h2 { font-size: 24px; letter-spacing: -.6px; font-weight: 600; }
 }
 @media (max-width: 1100px), (orientation: portrait) {
   .app { grid-template-rows: 64px minmax(0, 1fr); }
-  .compact-header { padding: 0 20px; }
-  .compact-brand { gap: 14px; }
-  .header-context { gap: 10px; }
-  .header-readonly { font-size: 10px; }
-  #theme-toggle { min-height: 36px; }
+  .compact-header { display: flex; justify-content: flex-end; padding: 0 20px; }
   #sidebar { top: 64px; padding: 20px 16px 12px; overflow: hidden; }
   .sb-head { position: static; background: transparent; gap: 8px; }
   #sidebar #add-toggle { width: auto; flex: 1; }
@@ -295,9 +286,6 @@ dialog h2 { font-size: 24px; letter-spacing: -.6px; font-weight: 600; }
 }
 @media (max-width: 600px) {
   .compact-header { padding: 0 14px; gap: 8px; }
-  .compact-brand { gap: 10px; }
-  .compact-brand img { width: 63px; height: 28px; }
-  .compact-brand .brand-title { font-size: 13px; }
   .compact-date-field button { min-height: 38px; padding: 0; border: 0; background: transparent; font-size: 22px; font-weight: 600; }
   #compact-title { margin-top: 0; }
   #compact-weekday { font-size: 10px; letter-spacing: 1.1px; text-transform: uppercase; }
@@ -311,9 +299,6 @@ dialog h2 { font-size: 24px; letter-spacing: -.6px; font-weight: 600; }
   .date-wheel-marker { top: 8px; bottom: 8px; width: 38px; border-radius: 20px; box-shadow: none; }
   .date-wheel-label, .date-wheel-pointer, .date-wheel-grip, .compact-calendar .date-wheel-arrow { display: none; }
   #date-wheel-preview { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-  .header-context { gap: 0; }
-  .header-readonly { display: none; }
-  #theme-toggle { padding: 4px 7px; font-size: 10px; }
   .compact-header .menu-toggle { width: 34px; padding: 0; border: 0; }
   main { padding: 20px 16px 16px; }
   #search-tools .search-filters label { font-size: 11px; }
@@ -342,7 +327,7 @@ dialog h2 { font-size: 24px; letter-spacing: -.6px; font-weight: 600; }
 @media print {
   :root, :root[data-theme] { --bg: var(--white); --panel: var(--white); --text: var(--midnight); --muted: #4B4D5E; --border: #E4DFDA; --workspace-grid: var(--border); --workspace-off-hours: var(--canvas); color-scheme: light; }
   @page { size: A4 landscape; margin: 10mm; }
-  .header-context, .sidebar-foot, .fc .fc-header-toolbar, .event-badges .note-badge { display: none !important; }
+  .sidebar-foot, .fc .fc-header-toolbar, .event-badges .note-badge { display: none !important; }
   .print-title { padding: 0 0 12px; margin: 0 0 12px; border-bottom: 2px solid var(--midnight); font-size: 20px; }
   .app { display: block; }
   #cal { padding: 0 !important; }
@@ -353,3 +338,7 @@ dialog h2 { font-size: 24px; letter-spacing: -.6px; font-weight: 600; }
   .fc .fc-col-header-cell-cushion { padding: 6px 4px; }
   .fc .fc-day-today { background: transparent; }
 }
+
+/* Filters collapsed: the header shows only the search box and the date title. */
+main:has(#search-tools.options-collapsed) .fc-header-toolbar :is(.fc-today-button, .fc-button-group, .fc-toolbar-chunk:last-child),
+main:has(#search-tools.options-collapsed) :is(#compact-weekday, .compact-controls, .date-wheel) { display: none; }

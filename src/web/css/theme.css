@@ -54,10 +54,6 @@ a:focus-visible, summary:focus-visible, .policy-page a:focus-visible,
 /* The same 56px brand bar owns the first grid row at every breakpoint. */
 .compact-header {
   grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; min-width: 0; gap: 8px; color: var(--canvas); }
-.compact-brand { display: flex; align-items: center; min-width: 0; }
-.compact-brand img { display: block; flex: none; max-width: none; object-fit: contain; }
-.compact-brand > span { display: block; width: auto; height: auto; border-radius: 0; background: transparent; color: var(--canvas); }
-.compact-brand .brand-title { line-height: 1.2; }
 .menu-toggle { display: none; }
 .compact-header .menu-toggle { flex: none; color: var(--canvas); background: transparent; border-color: var(--header-border); }
 @media (max-width: 1100px), (orientation: portrait) {

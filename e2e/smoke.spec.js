@@ -207,7 +207,7 @@ test('workspace groups settings and exposes event time and overlap labels', asyn
   await ready(page);
   await page.reload();
   await expect(page.locator('#display-settings')).not.toHaveAttribute('open', '');
-  await expect(page.locator('.header-readonly')).toContainText('Read-only');
+  await expect(page.locator('.sidebar-foot')).toContainText('view-only');
   await page.locator('#display-settings > summary').click();
   await expect(page.locator('#hours-start')).toBeVisible();
   await addFixture(page);

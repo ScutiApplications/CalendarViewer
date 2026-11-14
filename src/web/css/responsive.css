@@ -7,8 +7,6 @@
 @media (max-width: 1100px), (orientation: portrait) {
   .app { height: 100dvh; display: grid; grid-template-columns: minmax(0, 1fr); }
   .compact-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--panel); border-bottom: 1px solid var(--border); }
-  .compact-brand { display: flex; align-items: center; font-size: 16px; font-weight: 600; }
-  .compact-brand > span { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: var(--brand); color: var(--on-accent); font-size: 24px; }
   .compact-header button, .compact-calendar button { min-height: 44px; border-radius: 9px; }
   .menu-toggle { place-items: center; width: 44px; padding: 0; }
   .menu-icon { position: relative; display: block; width: 20px; height: 16px; }
@@ -106,7 +104,6 @@
 }
 
 @media (max-width: 600px) {
-  .compact-brand { font-size: 14px; }
   .compact-header > button { font-size: 12px; padding: 7px 10px; }
   .date-wheel { --date-gap: 2px; }
   .compact-day strong { font-size: 30px; }
