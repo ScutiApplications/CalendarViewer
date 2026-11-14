@@ -1,6 +1,9 @@
 // Keep entries paired with published VERSION values. Content is rendered as text, never HTML.
 (function (root) {
   const releases = [
+    { version: '1.2.3', changes: [
+      'Maintenance release. No user-facing changes.'
+    ] },
     { version: '1.2.2', changes: [
       'Maintenance release. No user-facing changes.'
     ] },
