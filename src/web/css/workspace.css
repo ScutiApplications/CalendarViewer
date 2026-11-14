@@ -342,3 +342,12 @@ dialog h2 { font-size: 24px; letter-spacing: -.6px; font-weight: 600; }
 /* Filters collapsed: the header shows only the search box and the date title. */
 main:has(#search-tools.options-collapsed) .fc-header-toolbar :is(.fc-today-button, .fc-button-group, .fc-toolbar-chunk:last-child),
 main:has(#search-tools.options-collapsed) :is(#compact-weekday, .compact-controls, .date-wheel) { display: none; }
+
+/* The now chip belongs to the red line: hide it when today is not a visible column (e.g. Saturday in the work week). */
+#cal:not(:has(.fc-day-today)) .fc-timegrid-now-indicator-arrow { display: none; }
+
+/* Landscape, filters collapsed: the date title shares the search box's line. Portrait and mobile keep two lines. */
+@media (min-width: 1101px) and (orientation: landscape) {
+  main:has(#search-tools.options-collapsed) { position: relative; }
+  main:has(#search-tools.options-collapsed) .fc .fc-header-toolbar { position: absolute; top: 24px; left: 664px; right: 28px; height: 42px; margin: 0; align-items: center; }
+}
