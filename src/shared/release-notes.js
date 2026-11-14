@@ -1,6 +1,9 @@
 // Keep entries paired with published VERSION values. Content is rendered as text, never HTML.
 (function (root) {
   const releases = [
+    { version: '1.2.0', changes: [
+      'Internal cleanup of free-time search and summary notifications. How the app looks and works is unchanged.'
+    ] },
     { version: '1.1.0', changes: [
       'Find free time across all calendars, plus Next free slot, Focus time, Overlaps and Week summary. Show jumps to the matching week.',
       'Join now button for a Teams meeting that is running or starts within 10 minutes.',
