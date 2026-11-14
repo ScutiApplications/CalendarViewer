@@ -2,15 +2,15 @@
 .compact-header, .compact-calendar, #compact-up-next, #sidebar-close, .sidebar-backdrop { display: none; }
 .fc button.agenda-card { display: block; width: 100%; min-height: 38px; border: 0; background: transparent; color: inherit; text-align: left; font: inherit; }
 .agenda-detail { display: block; }
-#add-toggle { width: auto; min-height: 38px; padding: 7px 12px; }
+#add-toggle { padding: 7px 12px; }
 
 @media (max-width: 1100px), (orientation: portrait) {
-  .app { height: 100dvh; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
-  .compact-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 22px; background: var(--panel); border-bottom: 1px solid var(--border); }
-  .compact-brand { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 600; }
+  .app { height: 100dvh; display: grid; grid-template-columns: minmax(0, 1fr); }
+  .compact-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--panel); border-bottom: 1px solid var(--border); }
+  .compact-brand { display: flex; align-items: center; font-size: 16px; font-weight: 600; }
   .compact-brand > span { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: var(--brand); color: var(--on-accent); font-size: 24px; }
   .compact-header button, .compact-calendar button { min-height: 44px; border-radius: 9px; }
-  .menu-toggle { display: grid; place-items: center; width: 44px; padding: 0; }
+  .menu-toggle { place-items: center; width: 44px; padding: 0; }
   .menu-icon { position: relative; display: block; width: 20px; height: 16px; }
   .menu-icon > span { position: absolute; left: 0; top: 7px; width: 20px; height: 2px; border-radius: 2px; background: currentColor; transition: transform .2s ease, opacity .15s ease; }
   .menu-icon > span:first-child { transform: translateY(-6px); }
@@ -18,7 +18,7 @@
   .menu-toggle[aria-expanded=true] .menu-icon > span:first-child { transform: rotate(45deg); }
   .menu-toggle[aria-expanded=true] .menu-icon > span:nth-child(2) { opacity: 0; transform: scaleX(0); }
   .menu-toggle[aria-expanded=true] .menu-icon > span:last-child { transform: rotate(-45deg); }
-  main { width: 100%; max-width: 1000px; margin: 0 auto; padding: 20px 24px 16px; gap: 12px; overflow: auto; overscroll-behavior: contain; }
+  main { width: 100%; max-width: 1000px; margin: 0 auto; overflow: auto; overscroll-behavior: contain; }
   .compact-calendar { display: block; flex: none; }
   .compact-date-row { display: block; }
   #compact-weekday { margin: 0 0 4px; color: var(--muted); font-size: 12px; }
@@ -53,7 +53,6 @@
   .compact-calendar .compact-day:hover { background: transparent; color: var(--text); }
   .compact-calendar .compact-day[data-preview=true] { color: var(--on-accent); }
   .compact-day[data-preview=true] strong { color: var(--on-accent); }
-  #search-tools { gap: 8px; }
   #search-tools label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   #event-search { flex: 1; width: auto; min-width: 0; min-height: 44px; padding: 10px 12px; border-radius: 10px; font-size: 16px; }
   #clear-search { min-height: 44px; }
@@ -66,13 +65,12 @@
   .alerts-panel .sync-auto { display: flex; justify-content: space-between; min-height: 44px; color: var(--text); font-size: 13px; }
   .alerts-panel .sync-auto select { min-height: 44px; }
   .sync-refresh { min-height: 44px; }
-  #compact-up-next:not([hidden]) { display: flex; flex: none; align-items: center; gap: 14px; padding: 16px; background: color-mix(in srgb, var(--accent) 11%, var(--panel)); border-radius: 14px; }
+  #compact-up-next:not([hidden]) { display: flex; flex: none; align-items: center; gap: 14px; padding: 16px; }
   .compact-next-body { flex: 1; min-width: 0; }
   .compact-next-label { margin-bottom: 5px; color: var(--accent); font-size: 11px; font-weight: 600; letter-spacing: .7px; }
   .compact-next-body strong { display: block; overflow-wrap: anywhere; font-size: 14px; font-weight: 600; }
   .compact-next-time { margin-top: 4px; color: var(--muted); font-size: 12px; }
   #compact-up-next button { flex: none; min-height: 44px; }
-  #cal { flex: none; height: 660px; min-height: 360px; padding: 12px; --cal-pad: 12px; border-radius: 14px; }
   #cal:has(.fc-list-view) { height: auto; min-height: 200px; }
   #cal .fc-header-toolbar { display: none; }
   #cal.show-rail .fc-view-harness { margin-right: 0; }
@@ -82,7 +80,7 @@
   .fc .fc-timegrid-event .event-card { padding: 5px 7px; }
   .fc .fc-timegrid-event .event-title { font-size: 12px; }
   .fc .fc-list-event-time { width: 110px; white-space: normal; }
-  #sidebar { display: none; position: fixed; inset: 0 auto 0 0; width: min(360px, calc(100vw - 24px)); z-index: var(--z-drawer); overflow-y: auto; background: var(--panel); padding: 22px 18px; box-shadow: 12px 0 48px rgb(var(--shadow-ink) / .2); }
+  #sidebar { display: none; position: fixed; inset: 0 auto 0 0; width: min(360px, calc(100vw - 24px)); z-index: var(--z-drawer); overflow-y: auto; background: var(--panel); box-shadow: 12px 0 48px rgb(var(--shadow-ink) / .2); }
   .sidebar-open #sidebar { display: flex; }
   .sidebar-open { overflow: hidden; }
   .sidebar-backdrop:not([hidden]) { display: block; position: fixed; inset: 0; width: 100%; height: 100%; min-height: 0; border: 0; border-radius: 0; background: rgb(var(--shadow-ink) / .4); z-index: var(--z-overlay); }
@@ -90,7 +88,7 @@
   #add-toggle { min-height: 44px; }
   #sidebar-close { display: block; min-width: 44px; min-height: 44px; padding: 0; margin-left: auto; font-size: 24px; border: 0; background: transparent; }
   #sources { flex: none; overflow: visible; }
-  .sb-head { position: sticky; top: -22px; z-index: 1; padding-block: 8px; background: var(--panel); }
+  .sb-head { top: -22px; z-index: 1; padding-block: 8px; }
   .sb-icon, .src .icon-button, #sidebar .sb-seg button, #sidebar .backup-settings button, #sidebar .backup-settings input[type=text], #sidebar .backup-settings input[type=password], #sidebar #add button { min-height: 44px; }
   .src .icon-button, .sb-icon { width: 44px; }
   #sidebar .sb-switch { min-height: 44px; }
@@ -108,28 +106,23 @@
 }
 
 @media (max-width: 600px) {
-  .compact-header { padding: 10px 16px; }
   .compact-brand { font-size: 14px; }
   .compact-header > button { font-size: 12px; padding: 7px 10px; }
-  main { padding: 18px 14px 14px; }
-  .compact-date-field button { font-size: 17px; padding: 9px; }
   .date-wheel { --date-gap: 2px; }
-  .date-wheel-marker { width: 64px; }
   .compact-day strong { font-size: 30px; }
   #compact-up-next:not([hidden]) { padding: 14px; gap: 10px; }
   #compact-up-next button { padding: 7px 12px; font-size: 13px; }
-  #cal { padding: 0; height: 540px; min-height: 320px; overflow: hidden; }
+  #cal { padding: 0; overflow: hidden; }
   .fc .fc-list { border: 0; border-radius: 14px; }
-  .fc .fc-list-table { border-collapse: separate; border-spacing: 0 10px; padding: 0 10px 10px; }
+  .fc .fc-list-table { border-collapse: separate; }
   .fc .fc-list-day-cushion { padding: 10px 4px; background: transparent; font-size: 12px; }
-  .fc .fc-list-event > td { padding: 12px 8px; background: var(--panel); border-block: 1px solid var(--border); }
-  .fc .fc-list-event-time { width: 64px; padding-left: 2px; border: 0 !important; vertical-align: top; font-size: 11px; color: var(--muted); background: transparent; }
+  .fc .fc-list-event > td { padding: 12px 8px; border-block: 1px solid var(--border); }
+  .fc .fc-list-event-time { padding-left: 2px; border: 0 !important; vertical-align: top; font-size: 11px; color: var(--muted); background: transparent; }
   .fc .fc-list-event-graphic { display: none; }
   .fc .fc-list-event-title { border: 1px solid var(--border); border-left: 4px solid var(--card-accent); border-radius: 12px; }
   .event-card.agenda-card { padding: 0; }
   .agenda-heading { gap: 5px; flex-wrap: wrap; }
-  .agenda-heading .event-title { font-size: 14px; }
-  .agenda-detail { margin-top: 8px; font-size: 12px; }
+  .agenda-detail { margin-top: 8px; }
   .fc .fc-list-empty { min-height: 200px; padding: 24px; }
   dialog { inset: auto 0 0; width: 100%; max-width: 100%; margin: 0; max-height: 90dvh; border-radius: 20px 20px 0 0; }
   dialog .dialog-body, #dlg .dialog-body { max-height: calc(90dvh - 4px); padding: 24px 20px max(24px, env(safe-area-inset-bottom)); }
@@ -152,7 +145,7 @@
 .date-picker-wheel::-webkit-scrollbar { display: none; }
 .date-picker-wheel.is-dragging, .date-picker-wheel.is-dragging button { cursor: grabbing; }
 #date-picker .date-picker-wheel button { display: flex; align-items: center; justify-content: center; width: 100%; height: 44px; min-height: 44px; padding: 0 4px; border: 0; border-radius: 0; background: transparent; color: var(--muted); font-size: 16px; font-weight: 400; scroll-snap-align: center; }
-#date-picker .date-picker-wheel button[aria-pressed=true] { color: var(--accent); font-size: 19px; font-weight: 500; }
+#date-picker .date-picker-wheel button[aria-pressed=true] { font-size: 19px; font-weight: 500; }
 .date-picker-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 14px; padding-top: 16px; border-top: 1px solid var(--border); }
 .date-picker-summary { color: var(--muted); font-size: 12px; }
 .date-picker-apply { min-height: 44px; }

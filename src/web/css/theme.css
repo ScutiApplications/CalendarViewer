@@ -45,34 +45,24 @@
     --chat-user-bg: var(--surface-muted); --chat-user-border: var(--border);
   }
 }
-body { font-family: "Segoe UI", system-ui, sans-serif; }
 button, input, select, textarea { font-family: inherit; }
-:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 a:focus-visible, summary:focus-visible, .policy-page a:focus-visible,
 .privacy-dialog a:focus-visible { outline-offset: 2px; }
 /* The rounded composer supplies the textarea's visible keyboard focus ring. */
 #assistant-dialog #assistant-question:focus-visible { outline: 0; }
 
 /* The same 56px brand bar owns the first grid row at every breakpoint. */
-.app { grid-template-rows: 56px minmax(0, 1fr); }
 .compact-header {
-  grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between;
-  height: 56px; min-width: 0; gap: 8px; padding: 0 8px;
-  background: var(--header-bg); color: var(--canvas); border-bottom: 1px solid var(--header-border);
-}
-.compact-brand { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.compact-brand img { display: block; flex: none; width: auto; height: 40px; max-width: none; object-fit: contain; }
+  grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; min-width: 0; gap: 8px; color: var(--canvas); }
+.compact-brand { display: flex; align-items: center; min-width: 0; }
+.compact-brand img { display: block; flex: none; max-width: none; object-fit: contain; }
 .compact-brand > span { display: block; width: auto; height: auto; border-radius: 0; background: transparent; color: var(--canvas); }
-.compact-brand .brand-title { font-size: 15px; font-weight: 600; line-height: 1.2; }
+.compact-brand .brand-title { line-height: 1.2; }
 .menu-toggle { display: none; }
 .compact-header .menu-toggle { flex: none; color: var(--canvas); background: transparent; border-color: var(--header-border); }
-.compact-header .menu-toggle:hover { background: var(--surface-muted); }
-.compact-header :focus-visible { outline-color: var(--header-focus); }
 @media (max-width: 1100px), (orientation: portrait) {
-  .app { grid-template-rows: 56px minmax(0, 1fr); }
   .menu-toggle { display: grid; }
   /* The drawer retains its modal backdrop and focus behavior below the brand row. */
-  #sidebar { top: 56px; }
 }
 
 .primary, #assistant-open, .date-picker-apply, #join, .detail-actions #join {
@@ -80,22 +70,16 @@ a:focus-visible, summary:focus-visible, .policy-page a:focus-visible,
   border-radius: 4px; font-weight: 600;
 }
 .primary:hover, #assistant-open:hover, .date-picker-apply:hover, #join:hover { background: var(--brand-hover); }
-#assistant-dialog .chat-send { border-radius: 50%; }
-#assistant-open { opacity: 1; }
-.fc .fc-toolbar-title { font-weight: 700; letter-spacing: -.015em; }
 .fc .fc-button-active, .fc .fc-button-active:hover {
   background: var(--brand) !important; color: var(--on-accent) !important; border-color: var(--brand) !important;
 }
 .fc .fc-button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; box-shadow: none; }
-.fc .fc-day-today .header-date { background: var(--brand); color: var(--on-accent); }
 .fc { --fc-today-bg-color: color-mix(in srgb, var(--accent) 5%, transparent); --fc-now-indicator-color: var(--now-line); }
 .fc .fc-event { border-left-width: 4px !important; }
-.event-card.canceled { opacity: 1; }
 .event-card.canceled .event-title, .month-chip.canceled .mc-title { color: var(--muted); }
 .event-title, .mc-title, .up-title { color: var(--text); }
 .event-time, .mc-time, .up-when { color: var(--muted); }
-.conflict-badge { background: var(--danger); color: var(--on-danger); border-color: var(--danger); }
-.now-chip { color: var(--on-danger); }
+.conflict-badge { border-color: var(--danger); }
 .source-sync[data-state=stale], .source-sync[data-state=offline],
 .sync-strip[data-state=stale], .sync-strip[data-state=error] {
   background: var(--warning-tint); color: var(--warning); border-radius: 4px;
@@ -111,7 +95,6 @@ a:focus-visible, summary:focus-visible, .policy-page a:focus-visible,
 .offset-chip { background: color-mix(in srgb, var(--accent) 10%, var(--panel)); color: var(--accent); }
 .offset-chip button { color: inherit; }
 .offset-chip button:hover { color: var(--text); }
-.msg.user { background: var(--chat-user-bg); color: var(--canvas); border: 1px solid var(--chat-user-border); }
 #compact-up-next:not([hidden]) { background: var(--up-next-bg); color: var(--canvas); border: 1px solid var(--border); }
 .compact-next-label { color: var(--gold); }
 .compact-next-time { color: var(--canvas); }
