@@ -22,7 +22,7 @@
 .print-title { display: none; }
 @media print {
   .print-title { display: block; font-weight: 700; color: #000; }
-  aside, .compact-header, .sidebar-backdrop, .compact-calendar, #search-tools, #sync-strip, #compact-up-next, #up-next,
+  aside, .menu-toggle, .sidebar-backdrop, .compact-calendar, #search-tools, #sync-strip, #compact-up-next, #up-next,
   #assistant-open, #toasts, .fc-header-toolbar .fc-button-group, .fc-header-toolbar .fc-today-button { display: none !important; }
   html, body, .app, main { height: auto !important; min-height: 0 !important; overflow: visible !important; background: #fff !important; color: #000 !important; }
   /* The screen layout is a grid with a sidebar column; without the sidebar, main would stay in that narrow column. */

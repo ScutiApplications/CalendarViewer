@@ -51,14 +51,10 @@ a:focus-visible, summary:focus-visible, .policy-page a:focus-visible,
 /* The rounded composer supplies the textarea's visible keyboard focus ring. */
 #assistant-dialog #assistant-question:focus-visible { outline: 0; }
 
-/* The same 56px brand bar owns the first grid row at every breakpoint. */
-.compact-header {
-  grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; min-width: 0; gap: 8px; color: var(--canvas); }
 .menu-toggle { display: none; }
-.compact-header .menu-toggle { flex: none; color: var(--canvas); background: transparent; border-color: var(--header-border); }
 @media (max-width: 1100px), (orientation: portrait) {
   .menu-toggle { display: grid; }
-  /* The drawer retains its modal backdrop and focus behavior below the brand row. */
+
 }
 
 .primary, #assistant-open, .date-picker-apply, #join, .detail-actions #join {

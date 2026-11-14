@@ -28,9 +28,6 @@
 </head>
 <body>
 <div class="app">
-<header class="compact-header">
-  <button class="menu-toggle" type="button" data-open-panel="calendars" aria-controls="sidebar" aria-expanded="false" aria-label="Calendars and settings"><span class="menu-icon" aria-hidden="true"><span></span><span></span><span></span></span></button>
-</header>
 <button class="sidebar-backdrop" type="button" aria-label="Close calendars and settings" hidden></button>
 <aside id="sidebar" aria-label="Calendars">
 <div class="sb-head">
@@ -137,7 +134,7 @@
 <section class="compact-calendar" aria-label="Date navigation">
   <div class="compact-date-row"><p id="compact-weekday"></p><div id="compact-title" class="compact-date-field">
     <button type="button" data-date-picker-open aria-haspopup="dialog" aria-controls="date-picker" aria-expanded="false"><span class="date-input-value"></span><span aria-hidden="true">↕</span></button>
-  </div></div>
+  </div><button class="menu-toggle" type="button" data-open-panel="calendars" aria-controls="sidebar" aria-expanded="false" aria-label="Calendars and settings"><span class="menu-icon" aria-hidden="true"><span></span><span></span><span></span></span></button></div>
   <div class="compact-controls"><div class="compact-arrows"><button id="compact-prev" type="button" aria-label="Previous week">‹</button><button id="compact-today" type="button">Today</button><button id="compact-next" type="button" aria-label="Next week">›</button></div><div id="compact-views" role="group" aria-label="Calendar view"></div></div>
   <div class="date-wheel">
     <div class="date-wheel-label" aria-hidden="true">SELECTED DATE</div>

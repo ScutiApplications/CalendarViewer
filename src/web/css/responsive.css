@@ -1,14 +1,13 @@
 /* Compact layouts share the desktop palette and live calendar components. */
-.compact-header, .compact-calendar, #compact-up-next, #sidebar-close, .sidebar-backdrop { display: none; }
+.compact-calendar, #compact-up-next, #sidebar-close, .sidebar-backdrop { display: none; }
 .fc button.agenda-card { display: block; width: 100%; min-height: 38px; border: 0; background: transparent; color: inherit; text-align: left; font: inherit; }
 .agenda-detail { display: block; }
 #add-toggle { padding: 7px 12px; }
 
 @media (max-width: 1100px), (orientation: portrait) {
   .app { height: 100dvh; display: grid; grid-template-columns: minmax(0, 1fr); }
-  .compact-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--panel); border-bottom: 1px solid var(--border); }
-  .compact-header button, .compact-calendar button { min-height: 44px; border-radius: 9px; }
-  .menu-toggle { place-items: center; width: 44px; padding: 0; }
+  .compact-calendar button { min-height: 44px; border-radius: 9px; }
+  .menu-toggle { place-items: center; width: 51px; min-height: 51px; padding: 0; background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 9px; }
   .menu-icon { position: relative; display: block; width: 20px; height: 16px; }
   .menu-icon > span { position: absolute; left: 0; top: 7px; width: 20px; height: 2px; border-radius: 2px; background: currentColor; transition: transform .2s ease, opacity .15s ease; }
   .menu-icon > span:first-child { transform: translateY(-6px); }
@@ -18,7 +17,8 @@
   .menu-toggle[aria-expanded=true] .menu-icon > span:last-child { transform: rotate(-45deg); }
   main { width: 100%; max-width: 1000px; margin: 0 auto; overflow: auto; overscroll-behavior: contain; }
   .compact-calendar { display: block; flex: none; }
-  .compact-date-row { display: block; }
+  .compact-date-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 8px; align-items: end; }
+  #compact-weekday { grid-column: 1 / -1; }
   #compact-weekday { margin: 0 0 4px; color: var(--muted); font-size: 12px; }
   #compact-title { margin: 14px 0 0; }
   .compact-date-field button { display: flex; justify-content: space-between; align-items: center; gap: 8px; width: 100%; min-height: 51px; padding: 9px 13px; font-size: 20px; text-align: left; }
@@ -104,7 +104,6 @@
 }
 
 @media (max-width: 600px) {
-  .compact-header > button { font-size: 12px; padding: 7px 10px; }
   .date-wheel { --date-gap: 2px; }
   .compact-day strong { font-size: 30px; }
   #compact-up-next:not([hidden]) { padding: 14px; gap: 10px; }

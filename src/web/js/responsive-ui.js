@@ -54,7 +54,6 @@ function initResponsiveUI() {
   const backdrop = document.querySelector('.sidebar-backdrop');
   const close = document.getElementById('sidebar-close');
   const main = document.querySelector('main');
-  const header = document.querySelector('.compact-header');
   const refreshLabel = document.querySelector('.sync-auto');
   let opener = null;
   function closePanel(restoreFocus = true) {
@@ -64,7 +63,7 @@ function initResponsiveUI() {
     sidebar.removeAttribute('role');
     sidebar.removeAttribute('aria-modal');
     sidebar.inert = responsiveMode !== 'desktop';
-    main.inert = header.inert = false;
+    main.inert = false;
     document.querySelectorAll('[data-open-panel]').forEach(button => button.setAttribute('aria-expanded', 'false'));
     closeSourceMenu(false);
     if (wasOpen && restoreFocus && opener) opener.focus();
@@ -77,7 +76,7 @@ function initResponsiveUI() {
     sidebar.setAttribute('aria-modal', 'true');
     document.body.classList.add('sidebar-open');
     backdrop.hidden = false;
-    main.inert = header.inert = true;
+    main.inert = true;
     document.querySelectorAll('[data-open-panel]').forEach(button => button.setAttribute('aria-expanded', 'true'));
     if (section === 'settings') document.getElementById('display-settings').open = true;
     const target = section === 'settings' ? sidebar.querySelector('#display-settings') : sidebar.querySelector('.sb-head');
@@ -120,7 +119,7 @@ function initResponsiveUI() {
       calendar.changeView(view);
       if (sidebar.contains(document.activeElement)) {
         if (next === 'desktop') document.getElementById('add-toggle').focus();
-        else header.querySelector('button').focus();
+        else document.querySelector('.menu-toggle').focus();
       }
     }
     if (next === 'desktop') {

@@ -151,7 +151,7 @@ test.describe('compact layouts', () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await ready(page);
     await expect(page.locator('html')).toHaveAttribute('data-layout', 'mobile');
-    await expect(page.locator('.compact-header')).toBeVisible();
+    await expect(page.locator('.menu-toggle')).toBeVisible();
     await expect(page.locator('#sidebar')).toBeHidden();
     await page.locator('.menu-toggle').click();
     await expect(page.locator('#sidebar')).toBeVisible();
