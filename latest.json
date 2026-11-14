@@ -1,8 +1,8 @@
 {
-  "version": "1.2.3",
-  "releaseUrl": "https://github.com/ScutiApplications/CalendarViewer/releases/tag/v1.2.3",
-  "downloadUrl": "https://github.com/ScutiApplications/CalendarViewer/releases/download/v1.2.3/CalendarViewer-1.2.3.zip",
-  "sha256": "6315c11cf80ab388203bc462842b962542ed9306fcd5167862c29f5ea9adc060",
-  "size": 373363,
+  "version": "1.2.4",
+  "releaseUrl": "https://github.com/ScutiApplications/CalendarViewer/releases/tag/v1.2.4",
+  "downloadUrl": "https://github.com/ScutiApplications/CalendarViewer/releases/download/v1.2.4/CalendarViewer-1.2.4.zip",
+  "sha256": "b65e56a94ab4bcb1d1f2784b351a14d29d615164e44d13b9233c8c3002c4db16",
+  "size": 373096,
   "minimumVersion": "1.2.0"
 }
