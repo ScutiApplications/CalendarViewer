@@ -1,6 +1,6 @@
 // @ts-check
 // Automatic checks read one static manifest. Release APIs are used only by maintainers.
-const { HOST, MANIFEST_URL, SIGNING_PUBLIC_KEY, validateManifest } = require('./update-manifest');
+const { HOST, MANIFEST_URL, SIGNATURE_URL, SIGNING_PUBLIC_KEY, validateManifest } = require('./update-manifest');
 const { verifyManifestSignature } = require('./update-signature');
 const failure = message => Object.assign(new Error(message), { status: 502 });
 async function boundedText(response, limit) {
@@ -26,7 +26,7 @@ function createUpdateChecker({ version, fetch: fetchImpl = global.fetch, now = D
   async function requireSignature(text) {
     let signature;
     try {
-      const reply = await fetchImpl(MANIFEST_URL + '.sig', { headers: { Accept: 'text/plain', 'User-Agent': 'CalendarViewer' }, redirect: 'manual', signal: AbortSignal.timeout(10000) });
+      const reply = await fetchImpl(SIGNATURE_URL, { headers: { Accept: 'text/plain', 'User-Agent': 'CalendarViewer' }, redirect: 'manual', signal: AbortSignal.timeout(10000) });
       if (!reply.ok) { await reply.body?.cancel(); throw failure('Update manifest signature is missing. Do not install this update.'); }
       signature = await boundedText(reply, 1024);
     } catch (error) { throw error.status ? error : failure('Could not read the update manifest signature. Try again later.'); }
