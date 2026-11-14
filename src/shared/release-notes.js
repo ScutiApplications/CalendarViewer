@@ -1,6 +1,9 @@
 // Keep entries paired with published VERSION values. Content is rendered as text, never HTML.
 (function (root) {
   const releases = [
+    { version: '1.2.5', changes: [
+      'Maintenance release. No user-facing changes.'
+    ] },
     { version: '1.2.4', changes: [
       'Check for updates now reports a new version right away, without a restart or a wait for the 5-minute cache.',
       'In portrait and mobile, the menu button sits in the date row.'

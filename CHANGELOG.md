@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 1.2.5
+
+### Changed
+
+- Maintenance release. No user-facing changes.
+
 ## 1.2.4
 
 ### Changed
