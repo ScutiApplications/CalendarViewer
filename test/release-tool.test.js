@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { changelogSection, isMandatory, unshippedMentions, nextMinimumVersion, bumpKind } = require('../tools/release.js');
+const fs = require('node:fs');
+const { changelogSection, isMandatory, unshippedMentions, userReleaseNotes, nextMinimumVersion, bumpKind } = require('../tools/release.js');
 
 const log = ['# Changelog', '', '## Unreleased', '', '## 0.0.6', '', '### Added', '- One', '', '### Fixed', '- Two', '', '## 0.0.5', '- Old', ''].join('\r\n');
 
@@ -28,6 +29,20 @@ test('release notes must not name files that are outside the installation ZIP', 
   assert.deepEqual(unshippedMentions('See docs/update-integrity.md and e2e/smoke.spec.js'), ['docs/update-integrity.md', 'e2e/smoke.spec.js']);
   assert.deepEqual(unshippedMentions('Edit src/web/index.html or run.bat'), []);
   assert.deepEqual(unshippedMentions('Updates are checked every six hours'), []);
+  assert.deepEqual(unshippedMentions('Edit CHANGELOG.md and package.json'), ['CHANGELOG.md', 'package.json']);
+  assert.deepEqual(unshippedMentions('Read README.md, SECURITY.md and VERSION'), []);
+});
+
+test('published notes keep only the user-facing part and refuse unshipped files', () => {
+  const log = '# Changelog\n\n## 1.2.0\n\n### Added\n\n- A thing\n\n### Maintainer\n\n- Run tools/release.bat\n';
+  assert.equal(userReleaseNotes(log, '1.2.0'), '### Added\n\n- A thing\n\n');
+  assert.throws(() => userReleaseNotes(log, '9.9.9'), /no "## 9.9.9" section/);
+  assert.throws(() => userReleaseNotes('## 1.2.0\n\n- See docs/update-integrity.md\n', '1.2.0'), /not in the release ZIP/);
+});
+
+test('the real changelog notes are safe to publish for every released version', () => {
+  const log = fs.readFileSync('CHANGELOG.md', 'utf8');
+  for (const m of log.matchAll(/^## (\d+\.\d+\.\d+)\s*$/gm)) assert.doesNotThrow(() => userReleaseNotes(log, m[1]), 'version ' + m[1]);
 });
 
 test('every in-app release note is free of maintainer file names', () => {

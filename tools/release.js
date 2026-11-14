@@ -2,8 +2,8 @@
 // Maintainer-only release helper. Run it through tools\release.bat.
 // It prepares the version (bump-version: raises VERSION, moves the Unreleased changelog entries, drafts the in-app
 // notes, commits and pushes), checks the repository, then waits for the GitHub Actions "release" workflow (started by
-// the VERSION push) to build the ZIP, tag and publish the release. It replaces the generated release notes with the
-// changelog, then signs and publishes latest.json and latest.json.sig to gh-pages. The signing key stays on this PC.
+// the VERSION push) to build the ZIP, tag and publish the release. The workflow publishes the changelog notes (see
+// --notes), then this script signs and publishes latest.json and latest.json.sig to gh-pages. The signing key stays on this PC.
 // It asks before every push or upload.
 //   node tools/release.js [patch|minor|major] --key <private-key-file> [--skip-checks] [--mandatory]
 // The bump runs when CHANGELOG.md has entries under "## Unreleased" (default patch). When Unreleased is empty, the
@@ -46,8 +46,24 @@ function changelogSection(changelog, version) {
  * @returns {string[]}
  */
 function unshippedMentions(text) {
-  const found = text.match(/(?:^|[^\w.])(?:tools|test|e2e|docs|\.github|\.githooks)[/\\][\w.-]+/gi) || [];
-  return found.map(item => item.replace(/^[^\w.]/, ""));
+  const folders = text.match(/(?:^|[^\w.])(?:tools|test|e2e|docs|\.github|\.githooks)[/\\][\w.-]+/gi) || [];
+  const rootFiles = text.match(/(?:^|[^\w./\\-])(?:CHANGELOG\.md|package\.json|pnpm-lock\.yaml|eslint\.config\.js|jsconfig\.json|playwright\.config\.js)(?![\w-])/gi) || [];
+  return [...folders, ...rootFiles].map(item => item.replace(/^[^\w.]/, ''));
+}
+
+/**
+ * The part of a version's changelog section that users see (everything before "### Maintainer"). Throws when the
+ * section is missing or mentions anything that is not in the release ZIP, so nothing unshipped reaches a release page.
+ * @param {string} changelog
+ * @param {string} version
+ */
+function userReleaseNotes(changelog, version) {
+  const section = changelogSection(changelog, version);
+  if (!section) throw new Error(`CHANGELOG.md has no "## ${version}" section.`);
+  const notes = section.split(/^### Maintainer\s*$/m)[0];
+  const stray = unshippedMentions(notes);
+  if (stray.length) throw new Error('Release notes mention files that are not in the release ZIP: ' + stray.join(', ') + '. Describe what the user sees, and put maintainer steps under a "### Maintainer" heading in CHANGELOG.md.');
+  return notes;
 }
 
 /**
@@ -104,6 +120,8 @@ function bumpKind(argv) {
 
 async function main() {
   const argv = process.argv.slice(2);
+  // Used by the release workflow: print the user-facing notes for a version, or fail if they are not safe to publish.
+  if (argv[0] === '--notes') { process.stdout.write(userReleaseNotes(fs.readFileSync(path.join(ROOT, 'CHANGELOG.md'), 'utf8'), argv[1])); return; }
   const keyIndex = argv.indexOf('--key');
   const keyFile = keyIndex >= 0 ? argv[keyIndex + 1] : process.env.CV_SIGNING_KEY || '';
   const skipChecks = argv.includes('--skip-checks');
@@ -125,18 +143,16 @@ async function main() {
   if (!SEMVER.test(version)) throw new Error('VERSION must be X.Y.Z.');
   const tag = 'v' + version;
   const zipName = `CalendarViewer-${version}.zip`;
-  const repoFlag = `${HOST}/${REPO}`;
 
   console.log(`Releasing ${tag}`);
   run('git', ['fetch', '--quiet', 'origin'], { quiet: true });
   if (run('git', ['rev-parse', 'HEAD'], { quiet: true }) !== run('git', ['rev-parse', 'origin/main'], { quiet: true })) throw new Error('main and origin/main differ. Push (or pull) first so the workflow builds what you checked.');
-  const notes = changelogSection(fs.readFileSync(path.join(ROOT, 'CHANGELOG.md'), 'utf8'), version);
-  if (!notes) throw new Error(`CHANGELOG.md has no "## ${version}" section.`);
-  const userNotes = notes.split(/^### Maintainer\s*$/m)[0];
+  const changelog = fs.readFileSync(path.join(ROOT, 'CHANGELOG.md'), 'utf8');
+  userReleaseNotes(changelog, version);
   const noteEntry = (fs.readFileSync(path.join(ROOT, 'src', 'shared', 'release-notes.js'), 'utf8').split(`version: '${version}'`)[1] || '').split('version:')[0];
-  const stray = unshippedMentions(userNotes + '\n' + noteEntry);
-  if (stray.length) throw new Error('Release notes mention files that are not in the release ZIP: ' + stray.join(', ') + '. Describe what the user sees, and put maintainer steps under a "### Maintainer" heading in CHANGELOG.md.');
-  const mandatory = argv.includes('--mandatory') || isMandatory(notes);
+  const strayInApp = unshippedMentions(noteEntry);
+  if (strayInApp.length) throw new Error('In-app release notes mention files that are not in the release ZIP: ' + strayInApp.join(', ') + '.');
+  const mandatory = argv.includes('--mandatory') || isMandatory(changelogSection(changelog, version) || '');
   if (mandatory) console.log('This release is MANDATORY: older installs will be blocked until they update.');
   if (!fs.readFileSync(path.join(ROOT, 'src', 'shared', 'release-notes.js'), 'utf8').includes(`version: '${version}'`)) throw new Error(`src/shared/release-notes.js has no ${version} entry.`);
   if (fs.readFileSync(path.join(ROOT, 'src', 'shared', 'release-notes.js'), 'utf8').includes('TODO:')) throw new Error('src/shared/release-notes.js still has a TODO draft. Write the notes first.');
@@ -161,11 +177,6 @@ async function main() {
     }
     if (!release) throw new Error(`Release ${tag} was not published within 15 minutes. Check Actions > release on GitHub, then run tools\\release.bat again (it continues with the version in VERSION).`);
     console.log(`Release published by Actions: https://${HOST}/${REPO}/releases/tag/${tag}`);
-    const notesFile = path.join(os.tmpdir(), `calendarviewer-notes-${process.pid}.md`);
-    fs.writeFileSync(notesFile, userNotes);
-    gh(['release', 'edit', tag, '--repo', repoFlag, '--notes-file', notesFile]);
-    fs.rmSync(notesFile, { force: true });
-    console.log('Release notes replaced with the changelog entries.');
 
     const { createReleaseSite } = require('./make_release_site');
     worktree = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'calendarviewer-pages-')), 'pages');
@@ -196,4 +207,4 @@ async function main() {
 
 if (require.main === module) main().catch(error => { console.error('\n' + error.message); process.exit(1); });
 
-module.exports = { changelogSection, isMandatory, unshippedMentions, nextMinimumVersion, bumpKind };
+module.exports = { changelogSection, isMandatory, unshippedMentions, userReleaseNotes, nextMinimumVersion, bumpKind };
