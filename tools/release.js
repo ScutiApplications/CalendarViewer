@@ -7,8 +7,9 @@
 // It asks before every push or upload.
 //   node tools/release.js [patch|minor|major] --key <private-key-file> [--skip-checks] [--mandatory]
 // With --mandatory the bump is minor by default (or major); patch is refused, and Unreleased must have entries.
-// The bump runs when CHANGELOG.md has entries under "## Unreleased" (default patch). When Unreleased is empty, the
-// version already in VERSION is released, for example after an earlier bump.
+// The bump runs when CHANGELOG.md has entries under "## Unreleased" (default patch). When Unreleased is empty and the
+// version in VERSION is already released, it is raised too with a placeholder "Maintenance release" note. If that version is
+// not released yet (for example after an earlier bump), it is released as is.
 // --mandatory makes this version required: older installs show a panel that cannot be closed until they update.
 // It is also detected: a "### Security" heading or a line starting with "Mandatory" in the version's CHANGELOG section.
 // Without it, a requirement from an earlier release is kept, so a later optional release does not lift it.
@@ -148,7 +149,18 @@ async function main() {
       const current = 'v' + fs.readFileSync(path.join(ROOT, 'VERSION'), 'utf8').trim();
       if (run('git', ['ls-remote', '--tags', 'origin', 'refs/tags/' + current], { quiet: true })) throw new Error(`A mandatory release needs changes: ${current} is already released and "## Unreleased" in CHANGELOG.md is empty. Add the user-facing changes there, then run it again (it raises the ${kind} version).`);
     }
-    console.log('Unreleased is empty: releasing the version already in VERSION.');
+    const current = fs.readFileSync(path.join(ROOT, 'VERSION'), 'utf8').trim();
+    if (run('git', ['ls-remote', '--tags', 'origin', 'refs/tags/v' + current], { quiet: true })) {
+      // The version is already out: bump anyway, with a placeholder entry so the notes check has a section to publish.
+      const next = bumpVersion(current, kind);
+      const question = readline.createInterface({ input: process.stdin, output: process.stdout });
+      try { await confirm(question, 'Unreleased is empty and ' + current + ' is already released. Raise VERSION to ' + next + ' (' + kind + ') with a "Maintenance release" note, commit and push it?'); } finally { question.close(); }
+      const changelogFile = path.join(ROOT, 'CHANGELOG.md');
+      const text = fs.readFileSync(changelogFile, 'utf8');
+      const eol = text.includes('\r\n') ? '\r\n' : '\n';
+      fs.writeFileSync(changelogFile, text.replace(/^## Unreleased[ \t]*\r?\n/m, heading => heading + eol + ['### Changed', '', '- Maintenance release. No user-facing changes.'].join(eol) + eol));
+      run('node', [path.join(ROOT, 'tools', 'bump-version.js'), kind]);
+    } else console.log('Unreleased is empty and ' + current + ' is not released yet: releasing it.');
   }
 
   const version = fs.readFileSync(path.join(ROOT, 'VERSION'), 'utf8').trim();
