@@ -38,7 +38,7 @@ function createUpdateChecker({ version, fetch: fetchImpl = global.fetch, now = D
     let response;
     try {
       response = await fetchImpl(MANIFEST_URL, {
-        headers: { Accept: 'application/json', 'User-Agent': 'CalendarViewer' }, redirect: 'manual', signal: AbortSignal.timeout(10000)
+        headers: { Accept: 'application/json', 'Cache-Control': 'no-cache', 'User-Agent': 'CalendarViewer' }, redirect: 'manual', signal: AbortSignal.timeout(10000)
       });
     } catch { throw failure('Could not reach the release site. Check your connection and try again.'); }
     const base = { currentVersion: version, latestVersion: null, releaseUrl: null, checkedAt: new Date(now()).toISOString() };

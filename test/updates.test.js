@@ -30,7 +30,8 @@ test('concurrent checks share a request, successful checks cache briefly, and fa
   await Promise.all([checker.check(), checker.check()]); assert.equal(calls, 1);
   await checker.check(); assert.equal(calls, 1);
   time += 101; await checker.check(); assert.equal(calls, 2);
-  const retry = createUpdateChecker({ publicKey: null, version: '1.1.0', fetch: async () => { if (calls++ === 2) throw new Error('offline'); return release('v1.2.0'); } });
+  await checker.check({ force: true }); assert.equal(calls, 3);
+  const retry = createUpdateChecker({ publicKey: null, version: '1.1.0', fetch: async () => { if (calls++ === 3) throw new Error('offline'); return release('v1.2.0'); } });
   await assert.rejects(retry.check(), /connection|GitHub/i); assert.equal((await retry.check()).status, 'available');
 });
 

@@ -129,7 +129,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/updates/check') {
       if (refuseUnlessLocalAction(req, res)) return;
       if (req.method !== 'POST') return send(res, 405, 'Use POST.');
-      try { return sendJson(res, 200, { ...await updates.check(), installation: await updateInstaller.state() }); }
+      try { return sendJson(res, 200, { ...await updates.check({ force: true }), installation: await updateInstaller.state() }); }
       catch (error) { return sendError(res, error); }
     }
     if (url.pathname === '/api/updates/status' || url.pathname === '/api/updates/install') {
