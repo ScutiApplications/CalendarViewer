@@ -2,13 +2,16 @@
 (function (root) {
   const releases = [
     { version: '1.2.4', changes: [
-      'Maintenance release. No user-facing changes.'
+      'Check for updates now reports a new version right away, without a restart or a wait for the 5-minute cache.',
+      'In portrait and mobile, the menu button sits in the date row.'
     ] },
     { version: '1.2.3', changes: [
-      'Maintenance release. No user-facing changes.'
+      'The red now-indicator no longer appears when the visible week has no today column.',
+      'In landscape, the search box and date title share one line. Portrait and mobile keep two lines.'
     ] },
     { version: '1.2.2', changes: [
-      'Maintenance release. No user-facing changes.'
+      'The header is merged into the sidebar: the Calendar Viewer title and the duplicate Read-only badge are gone, and the theme switch sits in the sticky sidebar footer.',
+      'With the filters collapsed, the header shows only the search box and the date title in every layout.'
     ] },
     { version: '1.2.1', changes: [
       'Maintenance release. No user-facing changes.'
