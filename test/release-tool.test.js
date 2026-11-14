@@ -63,7 +63,10 @@ test('a later optional release keeps the requirement of an earlier mandatory one
 
 test('the bump kind is the first plain word, not an option or the key path', () => {
   assert.equal(bumpKind([]), 'patch');
-  assert.equal(bumpKind(['--key', 'k.pem', '--mandatory']), 'patch');
+  assert.equal(bumpKind(['minor']), 'minor');
+  assert.equal(bumpKind(['--key', 'k.pem', '--mandatory']), 'minor');
+  assert.equal(bumpKind(['major', '--mandatory', '--key', 'k.pem']), 'major');
+  assert.throws(() => bumpKind(['patch', '--mandatory']), /minor or major/);
   assert.equal(bumpKind(['--key', 'k.pem', 'minor']), 'minor');
   assert.equal(bumpKind(['major', '--key', 'k.pem']), 'major');
 });

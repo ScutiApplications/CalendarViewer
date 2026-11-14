@@ -6,6 +6,7 @@
 // --notes), then this script signs and publishes latest.json and latest.json.sig to gh-pages. The signing key stays on this PC.
 // It asks before every push or upload.
 //   node tools/release.js [patch|minor|major] --key <private-key-file> [--skip-checks] [--mandatory]
+// With --mandatory the bump is minor by default (or major); patch is refused, and Unreleased must have entries.
 // The bump runs when CHANGELOG.md has entries under "## Unreleased" (default patch). When Unreleased is empty, the
 // version already in VERSION is released, for example after an earlier bump.
 // --mandatory makes this version required: older installs show a panel that cannot be closed until they update.
@@ -110,12 +111,16 @@ async function confirm(rl, question) {
 
 /**
  * The bump kind in the command line: the first word that is not an option or the value of --key.
+ * A mandatory release forces an update, so it always changes behavior: it raises the minor (default) or major version, never the patch.
  * @param {string[]} argv
  * @returns {string}
  */
 function bumpKind(argv) {
   const keyIndex = argv.indexOf('--key');
-  return argv.find((arg, i) => !arg.startsWith('--') && i !== keyIndex + 1) || 'patch';
+  const named = argv.find((arg, i) => !arg.startsWith('--') && (keyIndex < 0 || i !== keyIndex + 1));
+  if (!argv.includes('--mandatory')) return named || 'patch';
+  if (named === 'patch') throw new Error('A mandatory release raises the minor or major version, not the patch. Use minor (the default) or major.');
+  return named || 'minor';
 }
 
 async function main() {
@@ -137,7 +142,14 @@ async function main() {
     const question = readline.createInterface({ input: process.stdin, output: process.stdout });
     try { await confirm(question, 'CHANGELOG.md has Unreleased entries. Raise VERSION to ' + next + ' (' + kind + '), commit and push it?'); } finally { question.close(); }
     run('node', [path.join(ROOT, 'tools', 'bump-version.js'), kind]);
-  } else console.log('Unreleased is empty: releasing the version already in VERSION.');
+  } else {
+    // A mandatory release exists to force changes onto users, so it cannot reuse a version that is already out.
+    if (argv.includes('--mandatory')) {
+      const current = 'v' + fs.readFileSync(path.join(ROOT, 'VERSION'), 'utf8').trim();
+      if (run('git', ['ls-remote', '--tags', 'origin', 'refs/tags/' + current], { quiet: true })) throw new Error(`A mandatory release needs changes: ${current} is already released and "## Unreleased" in CHANGELOG.md is empty. Add the user-facing changes there, then run it again (it raises the ${kind} version).`);
+    }
+    console.log('Unreleased is empty: releasing the version already in VERSION.');
+  }
 
   const version = fs.readFileSync(path.join(ROOT, 'VERSION'), 'utf8').trim();
   if (!SEMVER.test(version)) throw new Error('VERSION must be X.Y.Z.');
