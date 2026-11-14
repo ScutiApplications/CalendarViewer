@@ -6,7 +6,7 @@ rem Needed once when the installed version cannot update itself (for example 0.0
 setlocal
 for %%I in ("%~dp0..") do set "ROOT=%%~fI"
 set "TARGET=%~1"
-if "%TARGET%"=="" set "TARGET=%USERPROFILE%\Documents\CalendarViewer"
+if "%TARGET%"=="" set "TARGET=D:\User\Documents\CalendarViewer"
 set "VER=%~2"
 if "%VER%"=="" for /f "usebackq delims=" %%V in ("%ROOT%\VERSION") do set "VER=%%V"
 set "ZIP=%ROOT%\dist\CalendarViewer-%VER%.zip"
